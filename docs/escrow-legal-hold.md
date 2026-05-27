@@ -156,7 +156,8 @@ The matrix in `escrow/src/tests/legal_hold.rs` covers:
 5. Hold defaults to `false` after `init`.
 6. Hold persists across status transitions (no bypass via state change).
 7. Hold can be toggled and re-blocks operations after re-set.
-8. Hold persists after `transfer_admin`; new admin must explicitly clear it.
-9. **Governance recovery (issue #269):** hold → `transfer_admin` → new admin
-   clears hold → `settle` and `withdraw` succeed; previous admin cannot clear
-   after rotation.
+8. Hold persists after `admin transfer`; new admin must explicitly clear it.
+9. Edge cases: hold check fires before amount / status / auth validation.
+10. Non-gated ops (`update_maturity`, `transfer_admin`, getters) are not blocked.
+11. Claim idempotency survives a hold toggle.
+12. Single hold toggle blocks all gated entrypoints in separate escrows.
