@@ -52,3 +52,30 @@ function calculatePayout(contribution, totalPrincipal, settleAmount) {
   return (c * sa) / tp; 
 }
 ```
+
+## 🔗 On-Chain View: `compute_investor_payout`
+
+The contract exposes an authoritative on-chain implementation of the formula above:
+
+```
+LiquifactEscrow::compute_investor_payout(investor: Address) → i128
+```
+
+This view derives `effective_yield_bps` from `DataKey::InvestorEffectiveYield` (tiered ladder
+selection from `fund_with_commitment`) and falls back to `InvoiceEscrow::yield_bps` for investors
+who used plain `fund`. Off-chain tools **must** call this view rather than re-implementing the
+formula to guarantee identical rounding.
+
+### On-chain integer safety
+
+- All intermediate multiplications use `i128::checked_mul`.
+- All divisions use `i128::checked_div`.
+- The function panics with `"compute_investor_payout: arithmetic overflow"` on overflow rather than
+  silently returning a wrong value.
+- `total_principal` is always positive when a `FundingCloseSnapshot` exists; the function
+  guards against the `≤ 0` edge case and returns `0` early.
+
+### Reference
+
+See `docs/escrow-read-api.md` → `compute_investor_payout` for the full parameter, return-value,
+and authorization documentation.

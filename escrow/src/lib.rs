@@ -1542,6 +1542,23 @@ impl LiquifactEscrow {
     }
 
     /// Investor records a payout claim after settlement. Idempotent marker per investor.
+    ///
+    /// # Idempotency
+    ///
+    /// A second call for the same investor is a silent no-op: the `InvestorClaimed` marker is
+    /// written **before** `InvestorPayoutClaimed` is emitted, so re-entrant or replayed calls
+    /// return early without re-emitting the event.
+    ///
+    /// # Guard ordering (ADR-002)
+    ///
+    /// 1. Legal-hold gate (read-only).
+    /// 2. `investor.require_auth()`.
+    /// 3. Single contribution fetch — eliminates the previous duplicate `get_contribution` call;
+    ///    the value is reused for the participation guard.
+    /// 4. Settled-status gate (escrow read).
+    /// 5. `not_before` ledger-time gate (see `docs/escrow-ledger-time.md`).
+    /// 6. Idempotent early-return on `InvestorClaimed`.
+    /// 7. Storage write + event emit.
     pub fn claim_investor_payout(env: Env, investor: Address) {
         assert!(
             !Self::legal_hold_active(&env),
@@ -1550,7 +1567,8 @@ impl LiquifactEscrow {
 
         investor.require_auth();
 
-        // Ensure the caller is actually an investor with a recorded contribution.
+        // Single fetch: consolidates the previous two reads of InvestorContribution.
+        // Retains the participation guard without a redundant second storage access.
         let contribution: i128 = env
             .storage()
             .instance()
@@ -1576,15 +1594,13 @@ impl LiquifactEscrow {
             "Investor commitment lock not expired (ledger timestamp)"
         );
 
-        // Investor must have participated (non-zero contribution) to claim.
-        let contribution: i128 = Self::get_contribution(env.clone(), investor.clone());
-        assert!(contribution > 0, "Investor did not participate");
-
+        // Idempotent early-return: a second claim is a no-op (no re-emit).
         let key = DataKey::InvestorClaimed(investor.clone());
         if env.storage().instance().get(&key).unwrap_or(false) {
             return;
         }
 
+        // Mark before emit — prevents re-emission on any re-entrant path.
         env.storage().instance().set(&key, &true);
 
         InvestorPayoutClaimed {
@@ -1593,6 +1609,94 @@ impl LiquifactEscrow {
             invoice_id: escrow.invoice_id.clone(),
         }
         .publish(&env);
+    }
+
+    /// On-chain read-only pro-rata gross payout for `investor`.
+    ///
+    /// Derives the **gross payout** (principal share plus `InvestorEffectiveYield`-adjusted
+    /// coupon) from [`FundingCloseSnapshot`], providing an authoritative on-chain implementation
+    /// of the math specified in `docs/escrow-pro-rata.md`. Off-chain tooling should call this
+    /// view rather than re-implementing the formula to guarantee identical rounding.
+    ///
+    /// # Formula (floor / truncating integer division)
+    ///
+    /// ```text
+    /// coupon       = total_principal × effective_yield_bps / 10_000  (floor)
+    /// settle_pool  = total_principal + coupon
+    /// gross_payout = contribution × settle_pool / total_principal     (floor)
+    /// ```
+    ///
+    /// # Returns
+    ///
+    /// - `0` when [`DataKey::FundingCloseSnapshot`] does not exist (escrow not yet funded).
+    /// - `0` when `investor` has no contribution (`DataKey::InvestorContribution` absent or zero).
+    /// - Computed floor payout otherwise.
+    ///
+    /// # Invariant
+    ///
+    /// The sum of `compute_investor_payout` over all investors is ≤ `total_principal + coupon`;
+    /// any rounding residual is swept by [`LiquifactEscrow::sweep_terminal_dust`].
+    ///
+    /// # Overflow safety
+    ///
+    /// All multiplications use [`i128::checked_mul`] and divisions use [`i128::checked_div`].
+    /// Panics with `"compute_investor_payout: arithmetic overflow"` rather than silently
+    /// producing a wrong value.
+    ///
+    /// # Authorization
+    ///
+    /// None — pure read; no auth required.
+    pub fn compute_investor_payout(env: Env, investor: Address) -> i128 {
+        // Contribution fetch: returns 0 for non-participants without panicking.
+        let contribution: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::InvestorContribution(investor.clone()))
+            .unwrap_or(0);
+        if contribution == 0 {
+            return 0;
+        }
+
+        // Snapshot must exist (written when escrow first reaches status == 1).
+        let Some(snap) = env
+            .storage()
+            .instance()
+            .get::<DataKey, FundingCloseSnapshot>(&DataKey::FundingCloseSnapshot)
+        else {
+            return 0;
+        };
+
+        let total_principal = snap.total_principal;
+        if total_principal <= 0 {
+            return 0;
+        }
+
+        // Resolve effective yield: investor-specific tier (set at first deposit) or escrow base.
+        // env.clone(): env is used again after this call for InvestorEffectiveYield read.
+        let escrow = Self::get_escrow(env.clone());
+        let effective_yield_bps: i64 = env
+            .storage()
+            .instance()
+            .get(&DataKey::InvestorEffectiveYield(investor.clone()))
+            .unwrap_or(escrow.yield_bps);
+
+        // coupon = total_principal × effective_yield_bps / 10_000  (floor)
+        let coupon = total_principal
+            .checked_mul(effective_yield_bps as i128)
+            .expect("compute_investor_payout: arithmetic overflow")
+            .checked_div(10_000)
+            .expect("compute_investor_payout: arithmetic overflow");
+
+        let settle_pool = total_principal
+            .checked_add(coupon)
+            .expect("compute_investor_payout: arithmetic overflow");
+
+        // gross_payout = contribution × settle_pool / total_principal  (floor)
+        contribution
+            .checked_mul(settle_pool)
+            .expect("compute_investor_payout: arithmetic overflow")
+            .checked_div(total_principal)
+            .expect("compute_investor_payout: arithmetic overflow")
     }
 
     pub fn update_maturity(env: Env, new_maturity: u64) -> InvoiceEscrow {
