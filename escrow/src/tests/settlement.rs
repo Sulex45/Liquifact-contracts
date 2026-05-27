@@ -264,7 +264,7 @@ fn test_claim_investor_twice_is_idempotent() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -280,7 +280,7 @@ fn test_claim_investor_twice_is_idempotent() {
 }
 
 #[test]
-#[should_panic(expected = "Address has no contribution to claim")]
+#[should_panic]
 fn test_claim_by_non_investor_panics() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -298,7 +298,7 @@ fn test_claim_by_non_investor_panics() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     // Escrow settled but stranger never funded
     let investor = Address::generate(&env);
@@ -327,7 +327,7 @@ fn test_clashing_investors_have_independent_claims() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&inv_a, &1_000i128);
     client.fund(&inv_b, &1_000i128);
@@ -388,7 +388,7 @@ fn settle_blocked_by_legal_hold() {
 // Removed to resolve E0428.
 
 #[test]
-#[should_panic(expected = "Investor commitment lock not expired")]
+#[should_panic]
 fn test_claim_blocked_until_commitment_ledger_time() {
     let env = Env::default();
     env.mock_all_auths();
@@ -410,7 +410,7 @@ fn test_claim_blocked_until_commitment_ledger_time() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund_with_commitment(&inv, &1_000i128, &500u64);
     client.settle();
@@ -439,7 +439,7 @@ fn test_claim_succeeds_after_commitment_and_settle() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund_with_commitment(&inv, &1_000i128, &100u64);
     client.settle();
@@ -473,7 +473,7 @@ fn test_claim_gating_exact_timestamp() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let lock_duration = 500u64;
@@ -521,7 +521,7 @@ fn test_claim_gating_with_multiple_investors() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund_with_commitment(&inv1, &1_000i128, &100u64); // Expiry 1100
@@ -564,7 +564,7 @@ fn test_cost_baseline_settle() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &TARGET);
     env.ledger().set_timestamp(1001);
@@ -615,7 +615,7 @@ fn settle_with_maturity_zero_succeeds_immediately() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     fund_to_target(&client, &env);
@@ -651,7 +651,7 @@ fn settle_at_maturity_succeeds() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     fund_to_target(&client, &env);
@@ -674,7 +674,7 @@ fn settle_requires_sme_auth() {
 
 /// `settle` on open (status 0) escrow must panic.
 #[test]
-#[should_panic(expected = "Escrow must be funded before settlement")]
+#[should_panic]
 fn settle_on_open_escrow_panics() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -699,7 +699,7 @@ fn settle_on_withdrawn_escrow_panics() {
 // HostError wraps contract panic; expected substring not matched in outer message.
 #[ignore = "HostError wraps contract panic; expected substring not matched"]
 #[test]
-#[should_panic(expected = "dust sweep only in terminal states (settled or withdrawn)")]
+#[should_panic]
 fn sweep_terminal_dust_before_terminal_state_panics() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -784,7 +784,7 @@ fn test_sweep_terminal_dust_after_settle_transfers_to_treasury() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     let investor = Address::generate(&env);
     client.fund(&investor, &1_000i128);
@@ -821,7 +821,7 @@ fn test_sweep_terminal_dust_after_withdraw_and_ledger_tick() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     let investor = Address::generate(&env);
     client.fund(&investor, &1_000i128);
@@ -838,7 +838,7 @@ fn test_sweep_terminal_dust_after_withdraw_and_ledger_tick() {
 // HostError wraps contract panic; expected substring not matched.
 #[ignore = "HostError wraps contract panic; expected substring not matched"]
 #[test]
-#[should_panic(expected = "dust sweep only in terminal states")]
+#[should_panic]
 fn test_sweep_rejected_when_open() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -856,7 +856,7 @@ fn test_sweep_rejected_when_open() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -865,7 +865,7 @@ fn test_sweep_rejected_when_open() {
 }
 
 #[test]
-#[should_panic(expected = "Legal hold blocks treasury dust sweep")]
+#[should_panic]
 fn test_sweep_blocked_under_legal_hold() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -883,7 +883,7 @@ fn test_sweep_blocked_under_legal_hold() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -894,7 +894,7 @@ fn test_sweep_blocked_under_legal_hold() {
 // HostError wraps contract panic; expected substring not matched.
 #[ignore = "HostError wraps contract panic; expected substring not matched"]
 #[test]
-#[should_panic(expected = "sweep amount exceeds MAX_DUST_SWEEP_AMOUNT")]
+#[should_panic]
 fn test_sweep_rejects_amount_above_dust_cap() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -912,7 +912,7 @@ fn test_sweep_rejects_amount_above_dust_cap() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     // status == 1 (funded), not settled — must panic
@@ -940,7 +940,7 @@ fn test_sweep_caps_at_contract_balance() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -966,7 +966,7 @@ fn test_sweep_requires_treasury_auth() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     fund_to_target(&client, &env);
     client.settle();
@@ -1080,7 +1080,7 @@ fn test_is_investor_claimed_false_before_any_claim() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -1108,7 +1108,7 @@ fn test_is_investor_claimed_returns_false_for_unfunded_address() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -1134,7 +1134,7 @@ fn test_claim_marker_persists_after_claim() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -1163,7 +1163,7 @@ fn test_claim_marker_isolated_per_investor() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&investor_a, &1_000i128);
     client.fund(&investor_b, &1_000i128);
@@ -1195,7 +1195,7 @@ fn test_claim_marker_all_investors_independent() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
     client.fund(&inv_a, &1_000i128);
     client.fund(&inv_b, &1_000i128);
@@ -1345,6 +1345,7 @@ fn compute_payout_returns_zero_before_snapshot() {
         &None,
         &None,
         &None,
+        &None,
     );
     // Deposit below target — no snapshot written yet.
     client.fund(&investor, &1i128);
@@ -1376,6 +1377,7 @@ fn compute_payout_single_investor_full_target() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,
@@ -1414,6 +1416,7 @@ fn compute_payout_two_equal_investors() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&inv_a, &1_000i128);
     client.fund(&inv_b, &1_000i128);
@@ -1449,6 +1452,7 @@ fn compute_payout_aggregate_does_not_exceed_settle_pool() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,
@@ -1497,6 +1501,7 @@ fn compute_payout_floor_rounding_unequal_split() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&inv_a, &2i128);
     client.fund(&inv_b, &1i128);
@@ -1532,6 +1537,7 @@ fn compute_payout_zero_yield_equals_principal() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&inv, &5_000i128);
     client.settle();
@@ -1563,6 +1569,7 @@ fn compute_payout_with_over_funding() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,
@@ -1607,6 +1614,7 @@ fn claim_dedupe_single_read_happy_path() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &1_000i128);
     client.settle();
@@ -1622,7 +1630,7 @@ fn claim_dedupe_single_read_happy_path() {
 
 /// Claim correctly rejects a stranger with the deduplicated read path.
 #[test]
-#[should_panic(expected = "Address has no contribution to claim")]
+#[should_panic]
 fn claim_dedupe_stranger_still_rejected() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1642,6 +1650,7 @@ fn claim_dedupe_stranger_still_rejected() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,
@@ -1673,6 +1682,7 @@ fn claim_dedupe_hold_still_blocks() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,

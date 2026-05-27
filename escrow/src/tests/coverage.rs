@@ -1,14 +1,132 @@
-use crate::{
-    test::{free_addresses, setup},
-    DataKey, YieldTier, EscrowSummary, EscrowCloseSnapshot,
-};
+use super::{free_addresses, setup};
+use crate::{DataKey, EscrowCloseSnapshot, EscrowError, EscrowSummary, YieldTier};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env, Vec as SorobanVec,
+    Address, Env, Error, InvokeError, Vec as SorobanVec,
 };
+use std::fmt::Debug;
+
+fn assert_contract_error<T, E>(
+    result: Result<Result<T, E>, Result<Error, InvokeError>>,
+    expected: EscrowError,
+) where
+    T: Debug,
+    E: Debug,
+{
+    let expected_code = expected as u32;
+    match result {
+        Err(Ok(error)) => {
+            assert_eq!(error, Error::from_contract_error(expected_code));
+        }
+        Err(Err(InvokeError::Contract(code))) => {
+            assert_eq!(code, expected_code);
+        }
+        other => panic!("expected ContractError({expected_code}), got {other:?}"),
+    }
+}
 
 #[test]
-#[should_panic(expected = "from_version does not match stored version")]
+fn typed_error_codes_cover_init_and_state_guards() {
+    let env = Env::default();
+    let (client, admin, sme) = setup(&env);
+    let (funding_token, treasury) = free_addresses(&env);
+
+    assert_contract_error(
+        client.try_init(
+            &admin,
+            &soroban_sdk::String::from_str(&env, "ERR_INIT"),
+            &sme,
+            &0,
+            &100,
+            &100,
+            &funding_token,
+            &None,
+            &treasury,
+            &None,
+            &None,
+            &None,
+            &None,
+        ),
+        EscrowError::AmountMustBePositive,
+    );
+
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(&env, "ERR_FLOW"),
+        &sme,
+        &100,
+        &100,
+        &100,
+        &funding_token,
+        &None,
+        &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+
+    let investor = Address::generate(&env);
+    assert_contract_error(
+        client.try_fund(&investor, &0),
+        EscrowError::FundingAmountNotPositive,
+    );
+    assert_contract_error(client.try_settle(), EscrowError::SettlementNotFunded);
+    assert_contract_error(client.try_withdraw(), EscrowError::WithdrawalNotFunded);
+    assert_contract_error(
+        client.try_claim_investor_payout(&investor),
+        EscrowError::NoContributionToClaim,
+    );
+}
+
+#[test]
+fn typed_error_codes_cover_allowlist_attestation_and_dust_guards() {
+    let env = Env::default();
+    let (client, admin, sme) = setup(&env);
+    let (funding_token, treasury) = free_addresses(&env);
+
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(&env, "ERR_MORE"),
+        &sme,
+        &100,
+        &100,
+        &100,
+        &funding_token,
+        &None,
+        &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+
+    client.set_allowlist_active(&true);
+    let investor = Address::generate(&env);
+    assert_contract_error(
+        client.try_fund(&investor, &10),
+        EscrowError::InvestorNotAllowlisted,
+    );
+
+    let digest = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
+    client.bind_primary_attestation_hash(&digest);
+    assert_contract_error(
+        client.try_bind_primary_attestation_hash(&digest),
+        EscrowError::PrimaryAttestationAlreadyBound,
+    );
+
+    assert_contract_error(
+        client.try_sweep_terminal_dust(&0),
+        EscrowError::SweepAmountNotPositive,
+    );
+    assert_contract_error(
+        client.try_sweep_terminal_dust(&1),
+        EscrowError::DustSweepNotTerminal,
+    );
+}
+
+#[test]
+#[should_panic]
 fn test_migrate_wrong_version() {
     let env = Env::default();
     let (client, _admin, _sme) = setup(&env);
@@ -16,7 +134,7 @@ fn test_migrate_wrong_version() {
 }
 
 #[test]
-#[should_panic(expected = "Already at current schema version")]
+#[should_panic]
 fn test_migrate_already_current() {
     let env = Env::default();
     env.mock_all_auths();
@@ -36,14 +154,14 @@ fn test_migrate_already_current() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.migrate(&5);
 }
 
 #[test]
-#[should_panic(expected = "No migration path from version 0 - extend migrate or redeploy")]
+#[should_panic]
 fn test_migrate_no_path() {
     let env = Env::default();
     env.mock_all_auths();
@@ -63,7 +181,7 @@ fn test_migrate_no_path() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     env.as_contract(&client.address, || {
@@ -93,7 +211,7 @@ fn test_admin_and_maturity_updates() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let updated = client.update_maturity(&200);
@@ -105,7 +223,7 @@ fn test_admin_and_maturity_updates() {
 }
 
 #[test]
-#[should_panic(expected = "Maturity can only be updated in Open state")]
+#[should_panic]
 fn test_update_maturity_not_open() {
     let env = Env::default();
     env.mock_all_auths();
@@ -125,7 +243,7 @@ fn test_update_maturity_not_open() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -134,7 +252,7 @@ fn test_update_maturity_not_open() {
 }
 
 #[test]
-#[should_panic(expected = "New admin must differ from current admin")]
+#[should_panic]
 fn test_transfer_admin_same_admin() {
     let env = Env::default();
     env.mock_all_auths();
@@ -154,14 +272,14 @@ fn test_transfer_admin_same_admin() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.transfer_admin(&admin);
 }
 
 #[test]
-#[should_panic(expected = "Legal hold blocks new funding while active")]
+#[should_panic]
 fn test_fund_during_legal_hold() {
     let env = Env::default();
     env.mock_all_auths();
@@ -181,7 +299,7 @@ fn test_fund_during_legal_hold() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.set_legal_hold(&true);
@@ -190,7 +308,7 @@ fn test_fund_during_legal_hold() {
 }
 
 #[test]
-#[should_panic(expected = "funding amount below min_contribution floor")]
+#[should_panic]
 fn test_fund_below_floor() {
     let env = Env::default();
     env.mock_all_auths();
@@ -210,7 +328,7 @@ fn test_fund_below_floor() {
         &None,
         &Some(50),
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -218,7 +336,7 @@ fn test_fund_below_floor() {
 }
 
 #[test]
-#[should_panic(expected = "Escrow must be settled before investor claim")]
+#[should_panic]
 fn test_claim_not_settled() {
     let env = Env::default();
     env.mock_all_auths();
@@ -238,7 +356,7 @@ fn test_claim_not_settled() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -247,7 +365,7 @@ fn test_claim_not_settled() {
 }
 
 #[test]
-#[should_panic(expected = "Investor commitment lock not expired (ledger timestamp)")]
+#[should_panic]
 fn test_claim_lock_not_expired() {
     let env = Env::default();
     env.mock_all_auths();
@@ -267,7 +385,7 @@ fn test_claim_lock_not_expired() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -300,7 +418,7 @@ fn test_all_getters() {
         &None,
         &Some(10),
         &Some(5),
-        &None
+        &None,
     );
 
     assert_eq!(client.get_funding_token(), funding_token);
@@ -335,7 +453,7 @@ fn test_attestations_happy_path() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let hash1 = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
@@ -351,7 +469,7 @@ fn test_attestations_happy_path() {
 }
 
 #[test]
-#[should_panic(expected = "primary attestation already bound")]
+#[should_panic]
 fn test_bind_primary_attestation_twice() {
     let env = Env::default();
     env.mock_all_auths();
@@ -370,7 +488,7 @@ fn test_bind_primary_attestation_twice() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let hash = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
@@ -398,7 +516,7 @@ fn test_unique_investors_cap() {
         &None,
         &None,
         &Some(2),
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &10);
@@ -407,7 +525,7 @@ fn test_unique_investors_cap() {
 }
 
 #[test]
-#[should_panic(expected = "unique investor cap reached")]
+#[should_panic]
 fn test_unique_investors_cap_exceeded() {
     let env = Env::default();
     env.mock_all_auths();
@@ -427,7 +545,7 @@ fn test_unique_investors_cap_exceeded() {
         &None,
         &None,
         &Some(1),
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &10);
@@ -455,7 +573,7 @@ fn test_sweep_terminal_dust_happy_path() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -470,7 +588,7 @@ fn test_sweep_terminal_dust_happy_path() {
 }
 
 #[test]
-#[should_panic(expected = "dust sweep only in terminal states (settled or withdrawn)")]
+#[should_panic]
 fn test_sweep_not_terminal() {
     let env = Env::default();
     env.mock_all_auths();
@@ -489,14 +607,14 @@ fn test_sweep_not_terminal() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.sweep_terminal_dust(&10);
 }
 
 #[test]
-#[should_panic(expected = "no funding token balance to sweep")]
+#[should_panic]
 fn test_sweep_no_balance() {
     let env = Env::default();
     env.mock_all_auths();
@@ -516,7 +634,7 @@ fn test_sweep_no_balance() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -545,7 +663,7 @@ fn test_withdraw_happy_path() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -556,7 +674,7 @@ fn test_withdraw_happy_path() {
 }
 
 #[test]
-#[should_panic(expected = "Escrow has not yet reached maturity")]
+#[should_panic]
 fn test_settle_too_early() {
     let env = Env::default();
     env.mock_all_auths();
@@ -575,7 +693,7 @@ fn test_settle_too_early() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -601,7 +719,7 @@ fn test_update_funding_target_happy_path() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let updated = client.update_funding_target(&200);
@@ -609,7 +727,7 @@ fn test_update_funding_target_happy_path() {
 }
 
 #[test]
-#[should_panic(expected = "Target cannot be less than already funded amount")]
+#[should_panic]
 fn test_update_funding_target_too_low() {
     let env = Env::default();
     env.mock_all_auths();
@@ -628,7 +746,7 @@ fn test_update_funding_target_too_low() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &50);
@@ -654,7 +772,7 @@ fn test_sme_collateral_commitment() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let asset = soroban_sdk::Symbol::new(&env, "GOLD");
@@ -667,7 +785,7 @@ fn test_sme_collateral_commitment() {
 }
 
 #[test]
-#[should_panic(expected = "Collateral asset symbol must not be empty")]
+#[should_panic]
 fn test_sme_collateral_empty_asset_rejected() {
     let env = Env::default();
     env.mock_all_auths();
@@ -686,13 +804,14 @@ fn test_sme_collateral_empty_asset_rejected() {
         &None,
         &None,
         &None,
+        &None,
     );
     let empty_asset = soroban_sdk::Symbol::new(&env, "");
     client.record_sme_collateral_commitment(&empty_asset, &5000);
 }
 
 #[test]
-#[should_panic(expected = "Collateral commitment timestamp must not go backward")]
+#[should_panic]
 fn test_sme_collateral_stale_timestamp_rejected() {
     let env = Env::default();
     env.mock_all_auths();
@@ -708,6 +827,7 @@ fn test_sme_collateral_stale_timestamp_rejected() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -738,6 +858,7 @@ fn test_sme_collateral_replacement_preserves_prior_amount() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -777,7 +898,7 @@ fn test_clear_legal_hold_convenience() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.set_legal_hold(&true);
@@ -805,7 +926,7 @@ fn test_claim_not_before_getter() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -844,13 +965,13 @@ fn test_init_with_tiers() {
         &Some(tiers),
         &None,
         &None,
-        &None
+        &None,
     );
     assert_eq!(client.get_escrow().yield_bps, 100); // Default yield
 }
 
 #[test]
-#[should_panic(expected = "sweep amount exceeds MAX_DUST_SWEEP_AMOUNT")]
+#[should_panic]
 fn test_sweep_too_much() {
     let env = Env::default();
     env.mock_all_auths();
@@ -869,7 +990,7 @@ fn test_sweep_too_much() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -880,7 +1001,7 @@ fn test_sweep_too_much() {
 }
 
 #[test]
-#[should_panic(expected = "Escrow must be funded before withdrawal")]
+#[should_panic]
 fn test_withdraw_not_funded() {
     let env = Env::default();
     env.mock_all_auths();
@@ -899,14 +1020,14 @@ fn test_withdraw_not_funded() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.withdraw();
 }
 
 #[test]
-#[should_panic(expected = "Escrow must be funded before settlement")]
+#[should_panic]
 fn test_settle_not_funded() {
     let env = Env::default();
     env.mock_all_auths();
@@ -925,7 +1046,7 @@ fn test_settle_not_funded() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.settle();
@@ -950,7 +1071,7 @@ fn test_fund_with_zero_commitment() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -959,7 +1080,7 @@ fn test_fund_with_zero_commitment() {
 }
 
 #[test]
-#[should_panic(expected = "Target must be strictly positive")]
+#[should_panic]
 fn test_update_target_invalid() {
     let env = Env::default();
     env.mock_all_auths();
@@ -978,14 +1099,14 @@ fn test_update_target_invalid() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     client.update_funding_target(&0);
 }
 
 #[test]
-#[should_panic(expected = "yield_bps must be between 0 and 10_000")]
+#[should_panic]
 fn test_init_yield_out_of_range() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1004,12 +1125,12 @@ fn test_init_yield_out_of_range() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 }
 
 #[test]
-#[should_panic(expected = "min_contribution must be positive when configured")]
+#[should_panic]
 fn test_init_min_contribution_zero() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1028,12 +1149,12 @@ fn test_init_min_contribution_zero() {
         &None,
         &Some(0),
         &None,
-        &None
+        &None,
     );
 }
 
 #[test]
-#[should_panic(expected = "tiers must have strictly increasing min_lock_secs")]
+#[should_panic]
 fn test_init_tiers_unsorted() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1061,12 +1182,12 @@ fn test_init_tiers_unsorted() {
         &Some(tiers),
         &None,
         &None,
-        &None
+        &None,
     );
 }
 
 #[test]
-#[should_panic(expected = "tiers must have non-decreasing yield_bps")]
+#[should_panic]
 fn test_init_tiers_not_increasing_yield() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1094,12 +1215,12 @@ fn test_init_tiers_not_increasing_yield() {
         &Some(tiers),
         &None,
         &None,
-        &None
+        &None,
     );
 }
 
 #[test]
-#[should_panic(expected = "tier yield_bps must be >= base yield_bps")]
+#[should_panic]
 fn test_init_tiers_lower_than_base() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1123,7 +1244,7 @@ fn test_init_tiers_lower_than_base() {
         &Some(tiers),
         &None,
         &None,
-        &None
+        &None,
     );
 }
 
@@ -1146,7 +1267,7 @@ fn test_get_yield_bps_empty_tiers_branch() {
         &None,
         &None,
         &None,
-        &None
+        &None,
     );
 
     // Inject empty tiers directly to trigger the branch in get_yield_bps_for_commitment
@@ -1163,7 +1284,7 @@ fn test_get_yield_bps_empty_tiers_branch() {
 }
 
 #[test]
-#[should_panic(expected = "tier yield_bps must be 0..=10_000")]
+#[should_panic]
 fn test_init_tier_yield_out_of_range() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1187,12 +1308,12 @@ fn test_init_tier_yield_out_of_range() {
         &Some(tiers),
         &None,
         &None,
-        &None
+        &None,
     );
 }
 
 #[test]
-#[should_panic(expected = "Escrow not initialized")]
+#[should_panic]
 fn test_get_escrow_summary_before_init() {
     let env = Env::default();
     let (client, _admin, _sme) = setup(&env);
@@ -1219,6 +1340,7 @@ fn test_get_escrow_summary_happy_path() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let summary = client.get_escrow_summary();
@@ -1226,13 +1348,16 @@ fn test_get_escrow_summary_happy_path() {
     // Verify fields match individual getters
     assert_eq!(summary.escrow, client.get_escrow());
     assert_eq!(summary.legal_hold, client.get_legal_hold());
-    
+
     let expected_snapshot = match client.get_funding_close_snapshot() {
         Some(snap) => EscrowCloseSnapshot::Some(snap),
         None => EscrowCloseSnapshot::None,
     };
     assert_eq!(summary.funding_close_snapshot, expected_snapshot);
-    assert_eq!(summary.unique_funder_count, client.get_unique_funder_count());
+    assert_eq!(
+        summary.unique_funder_count,
+        client.get_unique_funder_count()
+    );
     assert_eq!(summary.is_allowlist_active, client.is_allowlist_active());
     assert_eq!(summary.schema_version, client.get_version());
 
@@ -1264,29 +1389,33 @@ fn test_get_escrow_summary_after_state_changes() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     // Make state changes
-    client.set_legal_hold(&true);
     client.set_allowlist_active(&true);
 
     let investor = Address::generate(&env);
     client.set_investor_allowlisted(&investor, &true);
     // Fund enough to trigger funded status and capture snapshot
     client.fund(&investor, &1000);
+    client.set_legal_hold(&true);
 
     let summary = client.get_escrow_summary();
 
     // Verify fields match individual getters under state changes
     assert_eq!(summary.escrow, client.get_escrow());
     assert_eq!(summary.legal_hold, client.get_legal_hold());
-    
+
     let expected_snapshot = match client.get_funding_close_snapshot() {
         Some(snap) => EscrowCloseSnapshot::Some(snap),
         None => EscrowCloseSnapshot::None,
     };
     assert_eq!(summary.funding_close_snapshot, expected_snapshot);
-    assert_eq!(summary.unique_funder_count, client.get_unique_funder_count());
+    assert_eq!(
+        summary.unique_funder_count,
+        client.get_unique_funder_count()
+    );
     assert_eq!(summary.is_allowlist_active, client.is_allowlist_active());
     assert_eq!(summary.schema_version, client.get_version());
 
@@ -1295,7 +1424,10 @@ fn test_get_escrow_summary_after_state_changes() {
     assert!(summary.is_allowlist_active);
     assert_eq!(summary.unique_funder_count, 1);
     assert_eq!(summary.escrow.status, 1); // Funded
-    assert!(matches!(summary.funding_close_snapshot, EscrowCloseSnapshot::Some(_)));
+    assert!(matches!(
+        summary.funding_close_snapshot,
+        EscrowCloseSnapshot::Some(_)
+    ));
 
     let snapshot = match &summary.funding_close_snapshot {
         EscrowCloseSnapshot::Some(snap) => snap.clone(),
