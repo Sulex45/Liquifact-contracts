@@ -1569,14 +1569,14 @@ impl LiquifactEscrow {
         );
 
         if from_version >= SCHEMA_VERSION {
-            return fail(&env, EscrowError::AlreadyCurrentSchemaVersion);
+            fail(&env, EscrowError::AlreadyCurrentSchemaVersion)
+        } else {
+            // No migration path is implemented for any version below SCHEMA_VERSION.
+            // To add one: implement the transformation here, call
+            //   env.storage().instance().set(&DataKey::Version, &NEW_VERSION);
+            // and return NEW_VERSION before reaching this typed error.
+            fail(&env, EscrowError::NoMigrationPath)
         }
-
-        // No migration path is implemented for any version below SCHEMA_VERSION.
-        // To add one: implement the transformation here, call
-        //   env.storage().instance().set(&DataKey::Version, &NEW_VERSION);
-        // and return NEW_VERSION before reaching this typed error.
-        return fail(&env, EscrowError::NoMigrationPath);
     }
 
     /// Record investor principal while the invoice is **open**. First deposit sets base
