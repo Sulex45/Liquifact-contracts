@@ -350,6 +350,8 @@ fn test_init_invoice_id_non_ascii_multibyte_panics() {
         &None,
         &None,
         &None,
+        &None,
+        &None,
     );
 }
 
@@ -368,7 +370,20 @@ fn test_init_invoice_id_embedded_null_panics() {
     let s = soroban_sdk::String::from_bytes(&env, &bytes[..]);
 
     client.init(
-        &admin, &s, &sme, &1000i128, &500i64, &0u64, &t, &None, &tr, &None, &None, &None,
+        &admin,
+        &s,
+        &sme,
+        &1000i128,
+        &500i64,
+        &0u64,
+        &t,
+        &None,
+        &tr,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
     );
 }
 
