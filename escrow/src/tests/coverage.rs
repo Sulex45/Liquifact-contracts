@@ -1,5 +1,5 @@
 use super::{free_addresses, setup};
-use crate::{DataKey, EscrowCloseSnapshot, EscrowError, YieldTier};
+use crate::{CollateralCommitmentSnapshot, DataKey, EscrowCloseSnapshot, EscrowError, YieldTier};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, Env, Error, InvokeError, Vec as SorobanVec,
@@ -66,6 +66,7 @@ fn typed_error_codes_cover_init_and_state_guards() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -97,6 +98,7 @@ fn typed_error_codes_cover_allowlist_attestation_and_dust_guards() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -159,6 +161,7 @@ fn test_migrate_already_current() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.migrate(&5);
@@ -182,6 +185,7 @@ fn test_migrate_no_path() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -213,6 +217,7 @@ fn test_admin_handover_and_maturity_updates() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -257,6 +262,7 @@ fn test_update_maturity_not_open() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -287,6 +293,7 @@ fn test_transfer_admin_same_admin() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.propose_admin(&admin);
@@ -310,6 +317,7 @@ fn test_fund_during_legal_hold() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -345,6 +353,7 @@ fn test_fund_below_floor() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let investor = Address::generate(&env);
@@ -369,6 +378,7 @@ fn test_claim_not_settled() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -399,6 +409,7 @@ fn test_claim_lock_not_expired() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -438,6 +449,7 @@ fn test_all_getters() {
         &Some(5),
         &None,
         &None,
+        &None,
     );
 
     assert_eq!(client.get_funding_token(), funding_token);
@@ -469,6 +481,7 @@ fn test_attestations_happy_path() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -510,6 +523,7 @@ fn test_bind_primary_attestation_twice() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let hash = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
@@ -537,6 +551,7 @@ fn test_unique_investors_cap() {
         &None,
         &None,
         &Some(2),
+        &None,
         &None,
         &None,
     );
@@ -569,6 +584,7 @@ fn test_unique_investors_cap_exceeded() {
         &Some(1),
         &None,
         &None,
+        &None,
     );
 
     client.fund(&Address::generate(&env), &10);
@@ -593,6 +609,7 @@ fn test_sweep_terminal_dust_happy_path() {
         &token.id,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -666,6 +683,7 @@ fn test_sweep_not_terminal() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     assert_contract_error(
@@ -697,6 +715,7 @@ fn test_sweep_no_balance() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -722,6 +741,7 @@ fn test_withdraw_happy_path() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -758,6 +778,7 @@ fn test_settle_too_early() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.fund(&Address::generate(&env), &100);
@@ -780,6 +801,7 @@ fn test_update_funding_target_happy_path() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -813,6 +835,7 @@ fn test_update_funding_target_too_low() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.fund(&Address::generate(&env), &50);
@@ -835,6 +858,7 @@ fn test_sme_collateral_commitment() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -873,6 +897,7 @@ fn test_sme_collateral_empty_asset_rejected() {
         &None,
         &None,
         &None,
+        &None,
     );
     let empty_asset = soroban_sdk::Symbol::new(&env, "");
     client.record_sme_collateral_commitment(&empty_asset, &5000);
@@ -895,6 +920,7 @@ fn test_sme_collateral_stale_timestamp_rejected() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -927,6 +953,7 @@ fn test_sme_collateral_replacement_preserves_prior_amount() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -970,6 +997,7 @@ fn test_clear_legal_hold_convenience() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.set_legal_hold(&true);
@@ -994,6 +1022,7 @@ fn test_claim_not_before_getter() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1039,6 +1068,7 @@ fn test_init_with_tiers() {
         &None,
         &None,
         &None,
+        &None,
     );
     assert_eq!(client.get_escrow().yield_bps, 100); // Default yield
 }
@@ -1060,6 +1090,7 @@ fn test_sweep_too_much() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1096,6 +1127,7 @@ fn test_withdraw_not_funded() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.withdraw();
@@ -1123,6 +1155,7 @@ fn test_settle_not_funded() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.settle();
@@ -1144,6 +1177,7 @@ fn test_fund_with_zero_commitment() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1178,6 +1212,7 @@ fn test_update_target_invalid() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     client.update_funding_target(&0);
@@ -1205,6 +1240,7 @@ fn test_init_yield_out_of_range() {
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -1227,6 +1263,7 @@ fn test_init_min_contribution_zero() {
         &treasury,
         &None,
         &Some(0),
+        &None,
         &None,
         &None,
         &None,
@@ -1260,6 +1297,7 @@ fn test_init_tiers_unsorted() {
         &None,
         &treasury,
         &Some(tiers),
+        &None,
         &None,
         &None,
         &None,
@@ -1298,6 +1336,7 @@ fn test_init_tiers_not_increasing_yield() {
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -1328,6 +1367,7 @@ fn test_init_tiers_lower_than_base() {
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -1347,6 +1387,7 @@ fn test_get_yield_bps_empty_tiers_branch() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1394,6 +1435,7 @@ fn test_init_tier_yield_out_of_range() {
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -1427,6 +1469,7 @@ fn test_get_escrow_summary_happy_path() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let summary = client.get_escrow_summary();
@@ -1447,6 +1490,19 @@ fn test_get_escrow_summary_happy_path() {
     );
     assert_eq!(summary.is_allowlist_active, client.is_allowlist_active());
     assert_eq!(summary.schema_version, client.get_version());
+    let expected_collateral = match client.get_sme_collateral_commitment() {
+        Some(c) => CollateralCommitmentSnapshot::Some(c),
+        None => CollateralCommitmentSnapshot::None,
+    };
+    assert_eq!(summary.sme_collateral_commitment, expected_collateral);
+    assert_eq!(
+        summary.has_primary_attestation,
+        client.get_primary_attestation_hash().is_some()
+    );
+    assert_eq!(
+        summary.attestation_log_length,
+        client.get_attestation_append_log().len()
+    );
 
     // Verify default values specifically
     assert!(summary.has_maturity_lock);
@@ -1455,6 +1511,12 @@ fn test_get_escrow_summary_happy_path() {
     assert_eq!(summary.unique_funder_count, 0);
     assert!(!summary.is_allowlist_active);
     assert_eq!(summary.schema_version, 6);
+    assert_eq!(
+        summary.sme_collateral_commitment,
+        CollateralCommitmentSnapshot::None
+    );
+    assert!(!summary.has_primary_attestation);
+    assert_eq!(summary.attestation_log_length, 0);
 }
 
 #[test]
@@ -1474,6 +1536,7 @@ fn test_get_escrow_summary_after_state_changes() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1508,6 +1571,19 @@ fn test_get_escrow_summary_after_state_changes() {
     );
     assert_eq!(summary.is_allowlist_active, client.is_allowlist_active());
     assert_eq!(summary.schema_version, client.get_version());
+    let expected_collateral = match client.get_sme_collateral_commitment() {
+        Some(c) => CollateralCommitmentSnapshot::Some(c),
+        None => CollateralCommitmentSnapshot::None,
+    };
+    assert_eq!(summary.sme_collateral_commitment, expected_collateral);
+    assert_eq!(
+        summary.has_primary_attestation,
+        client.get_primary_attestation_hash().is_some()
+    );
+    assert_eq!(
+        summary.attestation_log_length,
+        client.get_attestation_append_log().len()
+    );
 
     // Verify state-specific values
     assert!(summary.has_maturity_lock);
@@ -1526,4 +1602,212 @@ fn test_get_escrow_summary_after_state_changes() {
     };
     assert_eq!(snapshot.total_principal, 1000);
     assert_eq!(snapshot.funding_target, 1000);
+
+    // New fields should still be at defaults (no collateral or attestations set)
+    assert_eq!(
+        summary.sme_collateral_commitment,
+        CollateralCommitmentSnapshot::None
+    );
+    assert!(!summary.has_primary_attestation);
+    assert_eq!(summary.attestation_log_length, 0);
+}
+
+#[test]
+fn test_get_escrow_summary_with_collateral_and_attestations() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let (funding_token, treasury) = free_addresses(&env);
+
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(&env, "INV002"),
+        &sme,
+        &1000,
+        &100,
+        &100,
+        &funding_token,
+        &None,
+        &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+
+    // Record SME collateral
+    let asset = soroban_sdk::Symbol::new(&env, "GOLD");
+    client.record_sme_collateral_commitment(&asset, &5000);
+
+    // Bind primary attestation hash
+    let primary_hash = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
+    client.bind_primary_attestation_hash(&primary_hash);
+
+    // Append several attestation digests
+    let hash2 = soroban_sdk::BytesN::from_array(&env, &[2u8; 32]);
+    let hash3 = soroban_sdk::BytesN::from_array(&env, &[3u8; 32]);
+    client.append_attestation_digest(&hash2);
+    client.append_attestation_digest(&hash3);
+
+    let summary = client.get_escrow_summary();
+
+    // Verify all fields match individual getters
+    assert_eq!(summary.escrow, client.get_escrow());
+    assert_eq!(summary.has_maturity_lock, client.has_maturity_lock());
+    assert_eq!(summary.legal_hold, client.get_legal_hold());
+    let expected_snapshot = match client.get_funding_close_snapshot() {
+        Some(snap) => EscrowCloseSnapshot::Some(snap),
+        None => EscrowCloseSnapshot::None,
+    };
+    assert_eq!(summary.funding_close_snapshot, expected_snapshot);
+    assert_eq!(
+        summary.unique_funder_count,
+        client.get_unique_funder_count()
+    );
+    assert_eq!(summary.is_allowlist_active, client.is_allowlist_active());
+    assert_eq!(summary.schema_version, client.get_version());
+    let expected_collateral = match client.get_sme_collateral_commitment() {
+        Some(c) => CollateralCommitmentSnapshot::Some(c),
+        None => CollateralCommitmentSnapshot::None,
+    };
+    assert_eq!(summary.sme_collateral_commitment, expected_collateral);
+    assert_eq!(
+        summary.has_primary_attestation,
+        client.get_primary_attestation_hash().is_some()
+    );
+    assert_eq!(
+        summary.attestation_log_length,
+        client.get_attestation_append_log().len()
+    );
+
+    // Verify new field values
+    let collateral = match &summary.sme_collateral_commitment {
+        CollateralCommitmentSnapshot::Some(c) => c,
+        CollateralCommitmentSnapshot::None => panic!("Expected collateral"),
+    };
+    assert_eq!(collateral.asset, asset);
+    assert_eq!(collateral.amount, 5000);
+    assert!(summary.has_primary_attestation);
+    assert_eq!(summary.attestation_log_length, 2);
+}
+
+#[test]
+fn test_record_sme_collateral_commitment_semantics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let token = crate::tests::install_stellar_asset_token(&env);
+
+    // Initialize escrow with the mock token
+    let (_, treasury) = free_addresses(&env);
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(&env, "INV_COLL_001"),
+        &sme,
+        &10_000i128,
+        &100,
+        &100,
+        &token.id,
+        &None,
+        &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+
+    // Check that get_sme_collateral_commitment returns None initially
+    assert!(client.get_sme_collateral_commitment().is_none());
+
+    // Mint tokens to SME, admin, and escrow contract to track balances
+    token.stellar.mint(&sme, &1_000_000i128);
+    token.stellar.mint(&admin, &1_000_000i128);
+    token.stellar.mint(&client.address, &1_000_000i128);
+
+    let sme_bal_before = token.token.balance(&sme);
+    let admin_bal_before = token.token.balance(&admin);
+    let escrow_bal_before = token.token.balance(&client.address);
+
+    // 1. Happy path: Record first commitment
+    let asset_sym = soroban_sdk::Symbol::new(&env, "USDC");
+    let pledge_amount = 5_000i128;
+
+    // Set ledger timestamp to a known value
+    let mut ledger_info = env.ledger().get();
+    ledger_info.timestamp = 10000;
+    env.ledger().set(ledger_info);
+
+    let commitment = client.record_sme_collateral_commitment(&asset_sym, &pledge_amount);
+
+    // Assert that the returned commitment is correct
+    assert_eq!(commitment.asset, asset_sym);
+    assert_eq!(commitment.amount, pledge_amount);
+    assert_eq!(commitment.recorded_at, 10000);
+
+    // Assert that the stored commitment matches
+    let stored = client.get_sme_collateral_commitment().unwrap();
+    assert_eq!(stored.asset, asset_sym);
+    assert_eq!(stored.amount, pledge_amount);
+    assert_eq!(stored.recorded_at, 10000);
+
+    // CRITICAL SECURITY ASSERTION: Assert that NO token balances changed!
+    assert_eq!(token.token.balance(&sme), sme_bal_before);
+    assert_eq!(token.token.balance(&admin), admin_bal_before);
+    assert_eq!(token.token.balance(&client.address), escrow_bal_before);
+
+    // 2. Edge Case: Record with replacement (timestamp goes forward)
+    let new_pledge_amount = 7_500i128;
+    let mut ledger_info = env.ledger().get();
+    ledger_info.timestamp = 12000;
+    env.ledger().set(ledger_info);
+
+    let replacement = client.record_sme_collateral_commitment(&asset_sym, &new_pledge_amount);
+
+    // Assert replacement details
+    assert_eq!(replacement.asset, asset_sym);
+    assert_eq!(replacement.amount, new_pledge_amount);
+    assert_eq!(replacement.recorded_at, 12000);
+
+    let stored_replacement = client.get_sme_collateral_commitment().unwrap();
+    assert_eq!(stored_replacement.amount, new_pledge_amount);
+    assert_eq!(stored_replacement.recorded_at, 12000);
+
+    // Token balances must still be completely unaffected
+    assert_eq!(token.token.balance(&sme), sme_bal_before);
+    assert_eq!(token.token.balance(&admin), admin_bal_before);
+    assert_eq!(token.token.balance(&client.address), escrow_bal_before);
+
+    // 3. Error Case: Timestamp goes backwards
+    let mut ledger_info = env.ledger().get();
+    ledger_info.timestamp = 11000; // 11000 < 12000 (previous recorded_at)
+    env.ledger().set(ledger_info);
+
+    assert_contract_error(
+        client.try_record_sme_collateral_commitment(&asset_sym, &8_000i128),
+        EscrowError::CollateralTimestampBackwards,
+    );
+
+    // Restore timestamp
+    let mut ledger_info = env.ledger().get();
+    ledger_info.timestamp = 12000;
+    env.ledger().set(ledger_info);
+
+    // 4. Error Case: Amount must be positive (0 or negative)
+    assert_contract_error(
+        client.try_record_sme_collateral_commitment(&asset_sym, &0i128),
+        EscrowError::CollateralAmountNotPositive,
+    );
+    assert_contract_error(
+        client.try_record_sme_collateral_commitment(&asset_sym, &-100i128),
+        EscrowError::CollateralAmountNotPositive,
+    );
+
+    // 5. Error Case: Asset symbol must be non-empty
+    let empty_symbol = soroban_sdk::Symbol::new(&env, "");
+    assert_contract_error(
+        client.try_record_sme_collateral_commitment(&empty_symbol, &5_000i128),
+        EscrowError::CollateralAssetEmpty,
+    );
 }

@@ -119,6 +119,33 @@ pub struct FundingCloseSnapshot {
 Written once, atomically, inside `fund_impl` on the first transition to `status == 1`. Immutable
 thereafter. Off-chain pro-rata share: `get_contribution(addr) / snapshot.total_principal`.
 
+### `EscrowSummary` (composite return type from `get_escrow_summary`)
+
+Not stored directly; assembled at read time from multiple storage keys. Combines core escrow state
+with three metadata families so callers obtain a complete view in a single host invocation.
+
+```rust
+pub struct EscrowSummary {
+    pub escrow: InvoiceEscrow,
+    pub has_maturity_lock: bool,
+    pub legal_hold: bool,
+    pub funding_close_snapshot: EscrowCloseSnapshot,
+    pub unique_funder_count: u32,
+    pub is_allowlist_active: bool,
+    pub schema_version: u32,
+    pub sme_collateral_commitment: Option<SmeCollateralCommitment>,
+    pub has_primary_attestation: bool,
+    pub attestation_log_length: u32,
+}
+```
+
+- `sme_collateral_commitment` — pulled from `DataKey::SmeCollateralPledge`; `None` when never recorded.
+- `has_primary_attestation` — `true` when `DataKey::PrimaryAttestationHash` is present.
+- `attestation_log_length` — length of the `Vec` stored at `DataKey::AttestationAppendLog`; `0` when absent.
+
+Legacy instances (no collateral or attestation keys) return `None` / `false` / `0` respectively,
+per the additive-key policy.
+
 ### `SmeCollateralCommitment` (stored at `DataKey::SmeCollateralPledge`)
 
 ```rust

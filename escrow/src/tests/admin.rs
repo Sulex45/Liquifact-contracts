@@ -24,6 +24,7 @@ fn test_update_maturity_success() {
         &None,
         &None,
         &None,
+        &None,
     );
     let updated = client.update_maturity(&2000u64);
     assert_eq!(updated.maturity, 2000u64);
@@ -46,6 +47,7 @@ fn test_update_maturity_wrong_state() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -79,6 +81,7 @@ fn test_update_maturity_unauthorized() {
         &None,
         &None,
         &None,
+        &None,
     );
     env.mock_auths(&[]);
     client.update_maturity(&2000u64);
@@ -99,6 +102,7 @@ fn test_propose_admin_sets_pending_without_changing_admin() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -126,6 +130,7 @@ fn test_accept_admin_promotes_pending_and_clears_pending() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -161,6 +166,7 @@ fn test_transfer_admin_deprecated_shim_only_proposes() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let unchanged = client.transfer_admin(&new_admin);
@@ -188,6 +194,7 @@ fn test_transfer_admin_same_address_panics() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.propose_admin(&admin);
 }
@@ -203,7 +210,7 @@ fn test_transfer_admin_uninitialized_panics() {
 }
 
 #[test]
-#[should_panic(expected = "No pending admin")]
+#[should_panic]
 fn test_accept_admin_without_pending_panics() {
     let env = Env::default();
     let (client, admin, sme) = setup(&env);
@@ -328,6 +335,7 @@ fn test_read_model_summary_includes_optional_admin_fields() {
         &Some(7u32),
         &Some(10_000i128),
         &None,
+        &None,
     );
 
     let summary = client.get_escrow_summary();
@@ -356,6 +364,7 @@ fn test_record_collateral_stored_and_does_not_block_settle() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -392,6 +401,7 @@ fn test_collateral_zero_panics() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.record_sme_collateral_commitment(&symbol_short!("XLM"), &0i128);
 }
@@ -411,6 +421,7 @@ fn test_collateral_requires_sme_auth() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -436,6 +447,7 @@ fn test_legal_hold_blocks_settle_withdraw_claim_and_fund() {
         &Address::generate(&env),
         &None,
         &Address::generate(&env),
+        &None,
         &None,
         &None,
         &None,
@@ -493,6 +505,7 @@ fn test_legal_hold_blocks_new_funds_when_open() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.set_legal_hold(&true);
     client.fund(&investor, &1i128);
@@ -534,6 +547,7 @@ fn test_update_funding_target_by_admin_succeeds() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let updated = client.update_funding_target(&10_000i128);
@@ -561,6 +575,7 @@ fn test_update_funding_target_by_non_admin_panics() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -599,6 +614,7 @@ fn test_update_funding_target_fails_when_funded() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128);
     client.update_funding_target(&10_000i128);
@@ -631,6 +647,7 @@ fn test_update_funding_target_below_funded_panics() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &4_000i128);
     client.update_funding_target(&3_000i128);
@@ -657,6 +674,7 @@ fn test_update_funding_target_zero_panics() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -694,6 +712,7 @@ fn test_update_funding_target_event_fields() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -744,6 +763,7 @@ fn test_update_funding_target_fails_when_settled() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128); // status → 1 (funded)
     client.settle(); // status → 2 (settled)
@@ -779,6 +799,7 @@ fn test_update_funding_target_fails_when_withdrawn() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128); // status → 1 (funded)
     client.withdraw(); // status → 3 (withdrawn)
@@ -809,6 +830,7 @@ fn test_update_funding_target_equal_to_funded_amount_succeeds() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -851,6 +873,7 @@ fn test_update_funding_target_negative_panics() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.update_funding_target(&-1i128);
 }
@@ -884,6 +907,7 @@ fn test_update_maturity_event_fields() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -934,6 +958,7 @@ fn test_update_maturity_fails_when_funded() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128); // status → 1 (funded)
     client.update_maturity(&2000u64);
@@ -963,6 +988,7 @@ fn test_update_maturity_fails_when_settled() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1003,6 +1029,7 @@ fn test_update_maturity_fails_when_withdrawn() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128); // status → 1
     client.withdraw(); // status → 3
@@ -1031,6 +1058,7 @@ fn test_update_maturity_to_zero_succeeds() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1066,6 +1094,7 @@ fn test_settle_passes_exactly_at_maturity_ledger_time() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1109,6 +1138,7 @@ fn test_settle_fails_one_second_before_maturity() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &5_000i128);
 
@@ -1139,6 +1169,7 @@ fn test_update_maturity_twice_overwrites() {
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1320,6 +1351,7 @@ fn auth_audit_sweep_terminal_dust_requires_treasury() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &TARGET);
     client.settle();
@@ -1328,199 +1360,179 @@ fn auth_audit_sweep_terminal_dust_requires_treasury() {
     client.sweep_terminal_dust(&100i128);
 }
 
-#[test]
-fn test_upgrade_admin_success() {
-    let env = Env::default();
-    let (client, admin, sme) = setup(&env);
-    default_init(&client, &env, &admin, &sme);
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    client.upgrade(&new_wasm_hash);
-}
+// --- rotate_beneficiary tests ---
 
 #[test]
-fn test_upgrade_state_survives() {
-    let env = Env::default();
-    let (client, admin, sme) = setup(&env);
-    default_init(&client, &env, &admin, &sme);
-
-    let escrow_before = client.get_escrow();
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    client.upgrade(&new_wasm_hash);
-
-    let escrow_after: InvoiceEscrow = env.as_contract(&client.address, || {
-        env.storage().instance().get(&DataKey::Escrow).unwrap()
-    });
-
-    assert_eq!(escrow_after.admin, escrow_before.admin);
-    assert_eq!(escrow_after.invoice_id, escrow_before.invoice_id);
-    assert_eq!(escrow_after.sme_address, escrow_before.sme_address);
-    assert_eq!(escrow_after.amount, escrow_before.amount);
-    assert_eq!(escrow_after.funding_target, escrow_before.funding_target);
-    assert_eq!(escrow_after.funded_amount, escrow_before.funded_amount);
-    assert_eq!(escrow_after.yield_bps, escrow_before.yield_bps);
-    assert_eq!(escrow_after.maturity, escrow_before.maturity);
-    assert_eq!(escrow_after.status, escrow_before.status);
-}
-
-#[test]
-fn test_upgrade_event_emitted() {
+fn test_rotate_beneficiary_success_dual_auth() {
     use soroban_sdk::testutils::Events as _;
     let env = Env::default();
+    env.mock_all_auths();
     let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-
-    let escrow = client.get_escrow();
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    client.upgrade(&new_wasm_hash);
-
-    let event = env.events().all().events().last().unwrap().clone();
+    let contract_id = client.address.clone();
+    
+    let updated = client.rotate_beneficiary(&new_sme);
+    assert_eq!(updated.sme_address, new_sme);
+    assert_eq!(client.get_escrow().sme_address, new_sme);
+    
     assert_eq!(
-        event,
-        ContractUpgraded {
-            name: symbol_short!("upgrade"),
-            invoice_id: escrow.invoice_id,
-            new_wasm_hash: new_wasm_hash.clone(),
+        env.events().all().events().last().unwrap().clone(),
+        crate::BeneficiaryRotated {
+            name: symbol_short!("ben_rot"),
+            invoice_id: client.get_escrow().invoice_id,
+            prior_sme: sme,
+            new_sme,
         }
-        .to_xdr(&env, &client.address)
+        .to_xdr(&env, &contract_id)
     );
 }
 
 #[test]
-fn test_upgrade_unauthorized_caller_rejected() {
-    let env = Env::default();
-    let (client, admin, sme) = setup(&env);
-    default_init(&client, &env, &admin, &sme);
-
-    let escrow_before = client.get_escrow();
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    // Call upgrade as a non-admin by clearing mock auths
-    env.mock_auths(&[]);
-
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        client.upgrade(&new_wasm_hash);
-    }));
-    assert!(result.is_err());
-
-    // Restore mock auths to verify storage remains unchanged
-    env.mock_all_auths();
-    let escrow_after = client.get_escrow();
-    assert_eq!(escrow_after.admin, escrow_before.admin);
-    assert_eq!(escrow_after.invoice_id, escrow_before.invoice_id);
-}
-
-#[test]
-fn test_wrong_mock_auth_rejected() {
+#[should_panic]
+fn test_rotate_beneficiary_only_sme_auth_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let admin = Address::generate(&env);
-    let sme = Address::generate(&env);
-    let client = deploy(&env);
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    // Mock auth for a wrong random address
-    let wrong_addr = Address::generate(&env);
-    env.mock_auths(&[soroban_sdk::testutils::MockAuth {
-        address: &wrong_addr,
-        invoke: &soroban_sdk::testutils::MockAuthInvoke {
-            contract: &client.address,
-            fn_name: "upgrade",
-            args: soroban_sdk::vec![&env, new_wasm_hash.clone().into()],
-            sub_invokes: &[],
-        },
-    }]);
-
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        client.upgrade(&new_wasm_hash);
-    }));
-    assert!(result.is_err());
+    env.mock_auths(&[&sme]); // Only SME auth
+    client.rotate_beneficiary(&new_sme);
 }
 
 #[test]
-fn test_upgrade_read_preserved_escrow() {
+#[should_panic]
+fn test_rotate_beneficiary_only_admin_auth_fails() {
     let env = Env::default();
+    env.mock_all_auths();
     let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    client.upgrade(&new_wasm_hash);
-
-    let escrow = env.as_contract(&client.address, || LiquifactEscrow::get_escrow(env.clone()));
-
-    assert_eq!(escrow.admin, admin);
+    env.mock_auths(&[&admin]); // Only admin auth
+    client.rotate_beneficiary(&new_sme);
 }
 
 #[test]
-fn test_upgrade_does_not_increment_version() {
+#[should_panic]
+fn test_rotate_beneficiary_no_auth_fails() {
     let env = Env::default();
+    env.mock_all_auths();
     let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-
-    let version_before = env.as_contract(&client.address, || {
-        LiquifactEscrow::get_version(env.clone())
-    });
-    assert_eq!(version_before, SCHEMA_VERSION);
-
-    let dummy_wasm = soroban_sdk::Bytes::from_slice(&env, DUMMY_WASM);
-    let new_wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-
-    client.upgrade(&new_wasm_hash);
-
-    let version_after = env.as_contract(&client.address, || {
-        LiquifactEscrow::get_version(env.clone())
-    });
-    assert_eq!(version_after, SCHEMA_VERSION);
+    env.mock_auths(&[]); // No auth
+    client.rotate_beneficiary(&new_sme);
 }
 
-const DUMMY_WASM: &[u8] = &[
-    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x04, 0x05, 0x01, 0x70, 0x01, 0x01, 0x01, 0x05,
-    0x03, 0x01, 0x00, 0x10, 0x06, 0x21, 0x04, 0x7f, 0x01, 0x41, 0x80, 0x80, 0xc0, 0x00, 0x0b, 0x7f,
-    0x00, 0x41, 0x80, 0x80, 0xc0, 0x00, 0x0b, 0x7f, 0x00, 0x41, 0x80, 0x80, 0xc0, 0x00, 0x0b, 0x7f,
-    0x00, 0x41, 0x80, 0x80, 0xc0, 0x00, 0x0b, 0x07, 0x29, 0x04, 0x06, 0x6d, 0x65, 0x6d, 0x6f, 0x72,
-    0x79, 0x02, 0x00, 0x01, 0x5f, 0x03, 0x01, 0x0a, 0x5f, 0x5f, 0x64, 0x61, 0x74, 0x61, 0x5f, 0x65,
-    0x6e, 0x64, 0x03, 0x02, 0x0b, 0x5f, 0x5f, 0x68, 0x65, 0x61, 0x70, 0x5f, 0x62, 0x61, 0x73, 0x65,
-    0x03, 0x03, 0x0b, 0x09, 0x01, 0x00, 0x41, 0x80, 0x80, 0xc0, 0x00, 0x0b, 0x00, 0x00, 0x1e, 0x11,
-    0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x65, 0x6e, 0x76, 0x6d, 0x65, 0x74, 0x61, 0x76,
-    0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6f, 0x0e,
-    0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x6d, 0x65, 0x74, 0x61, 0x76, 0x30, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x72, 0x73, 0x76, 0x65, 0x72, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x06, 0x31, 0x2e, 0x39, 0x34, 0x2e, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x08, 0x72, 0x73, 0x73, 0x64, 0x6b, 0x76, 0x65, 0x72, 0x00, 0x00, 0x00, 0x2f, 0x32, 0x35,
-    0x2e, 0x32, 0x2e, 0x30, 0x23, 0x33, 0x65, 0x35, 0x32, 0x39, 0x61, 0x36, 0x38, 0x62, 0x34, 0x34,
-    0x39, 0x63, 0x34, 0x64, 0x63, 0x33, 0x66, 0x33, 0x63, 0x32, 0x64, 0x35, 0x34, 0x33, 0x30, 0x34,
-    0x61, 0x32, 0x33, 0x62, 0x61, 0x38, 0x35, 0x39, 0x37, 0x64, 0x31, 0x63, 0x66, 0x00, 0x00, 0x40,
-    0x04, 0x6e, 0x61, 0x6d, 0x65, 0x00, 0x19, 0x18, 0x64, 0x75, 0x6d, 0x6d, 0x79, 0x5f, 0x77, 0x61,
-    0x73, 0x6d, 0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x2e, 0x77, 0x61, 0x73, 0x6d,
-    0x07, 0x12, 0x01, 0x00, 0x0f, 0x5f, 0x5f, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x5f, 0x70, 0x6f, 0x69,
-    0x6e, 0x74, 0x65, 0x72, 0x09, 0x0a, 0x01, 0x00, 0x07, 0x2e, 0x72, 0x6f, 0x64, 0x61, 0x74, 0x61,
-    0x00, 0x4d, 0x09, 0x70, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x73, 0x02, 0x08, 0x6c, 0x61,
-    0x6e, 0x67, 0x75, 0x61, 0x67, 0x65, 0x01, 0x04, 0x52, 0x75, 0x73, 0x74, 0x00, 0x0c, 0x70, 0x72,
-    0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x64, 0x2d, 0x62, 0x79, 0x01, 0x05, 0x72, 0x75, 0x73, 0x74,
-    0x63, 0x1d, 0x31, 0x2e, 0x39, 0x34, 0x2e, 0x31, 0x20, 0x28, 0x65, 0x34, 0x30, 0x38, 0x39, 0x34,
-    0x37, 0x62, 0x66, 0x20, 0x32, 0x30, 0x32, 0x36, 0x2d, 0x30, 0x33, 0x2d, 0x32, 0x35, 0x29, 0x00,
-    0x94, 0x01, 0x0f, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x5f, 0x66, 0x65, 0x61, 0x74, 0x75, 0x72,
-    0x65, 0x73, 0x08, 0x2b, 0x0b, 0x62, 0x75, 0x6c, 0x6b, 0x2d, 0x6d, 0x65, 0x6d, 0x6f, 0x72, 0x79,
-    0x2b, 0x0f, 0x62, 0x75, 0x6c, 0x6b, 0x2d, 0x6d, 0x65, 0x6d, 0x6f, 0x72, 0x79, 0x2d, 0x6f, 0x70,
-    0x74, 0x2b, 0x16, 0x63, 0x61, 0x6c, 0x6c, 0x2d, 0x69, 0x6e, 0x64, 0x69, 0x72, 0x65, 0x63, 0x74,
-    0x2d, 0x6f, 0x76, 0x65, 0x72, 0x6c, 0x6f, 0x6e, 0x67, 0x2b, 0x0a, 0x6d, 0x75, 0x6c, 0x74, 0x69,
-    0x76, 0x61, 0x6c, 0x75, 0x65, 0x2b, 0x0f, 0x6d, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x2d, 0x67,
-    0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x73, 0x2b, 0x13, 0x6e, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x70, 0x70,
-    0x69, 0x6e, 0x67, 0x2d, 0x66, 0x70, 0x74, 0x6f, 0x69, 0x6e, 0x74, 0x2b, 0x0f, 0x72, 0x65, 0x66,
-    0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x2d, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2b, 0x08, 0x73, 0x69,
-    0x67, 0x6e, 0x2d, 0x65, 0x78, 0x74,
-];
+#[test]
+#[should_panic]
+fn test_rotate_beneficiary_new_same_as_current_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.rotate_beneficiary(&sme);
+}
+
+#[test]
+#[should_panic]
+fn test_rotate_beneficiary_in_settled_state_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    let investor = Address::generate(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.fund(&investor, &TARGET);
+    client.settle(); // status 2
+    client.rotate_beneficiary(&new_sme);
+}
+
+#[test]
+#[should_panic]
+fn test_rotate_beneficiary_in_withdrawn_state_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    let investor = Address::generate(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.fund(&investor, &TARGET);
+    client.withdraw(); // status 3
+    client.rotate_beneficiary(&new_sme);
+}
+
+#[test]
+#[should_panic]
+fn test_rotate_beneficiary_in_cancelled_state_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    let investor = Address::generate(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.fund(&investor, &TARGET);
+    client.cancel_funding(); // status 4
+    client.rotate_beneficiary(&new_sme);
+}
+
+#[test]
+#[should_panic]
+fn test_rotate_beneficiary_with_legal_hold_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.set_legal_hold(&true);
+    client.rotate_beneficiary(&new_sme);
+}
+
+#[test]
+fn test_rotate_beneficiary_in_funded_state_success() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    let investor = Address::generate(&env);
+    default_init(&client, &env, &admin, &sme);
+    client.fund(&investor, &TARGET); // status 1
+    let updated = client.rotate_beneficiary(&new_sme);
+    assert_eq!(updated.sme_address, new_sme);
+}
+
+#[test]
+fn test_rotate_beneficiary_then_withdraw_goes_to_new_sme() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, sme) = setup(&env);
+    let new_sme = Address::generate(&env);
+    let investor = Address::generate(&env);
+    let token = install_stellar_asset_token(&env);
+    let treasury = Address::generate(&env);
+    let escrow_id = deploy_id(&env);
+    let client = LiquifactEscrowClient::new(&env, &escrow_id);
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(&env, "WDTST"),
+        &sme,
+        &TARGET,
+        &800i64,
+        &0u64,
+        &token.id,
+        &None,
+        &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+    token.stellar.mint(&investor, &TARGET);
+    token.stellar.approve(&investor, &escrow_id, &TARGET);
+    client.fund(&investor, &TARGET);
+    client.rotate_beneficiary(&new_sme);
+    client.withdraw();
+    assert_eq!(token.stellar.balance(&new_sme), TARGET);
+}

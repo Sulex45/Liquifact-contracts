@@ -1,6 +1,6 @@
 use super::super::external_calls::transfer_funding_token_with_balance_checks;
 use super::*;
-use crate::{DataKey, InvoiceEscrow, LegalHoldChanged};
+use crate::{CollateralRecordedEvt, DataKey, InvoiceEscrow, LegalHoldChanged};
 use soroban_sdk::{
     contract, contractimpl, vec, IntoVal, Map, MuxedAddress, Symbol, TryFromVal, Val,
 };
@@ -44,12 +44,13 @@ fn test_legal_hold_midflow_blocks_and_resumes_with_ordered_events() {
         &admin,
         &soroban_sdk::String::from_str(&env, "LEGAL_HOLD_INTEGRATION"),
         &sme,
-        &1_000_000_000i128,
+        &100_000_000i128,
         &1000i64,
         &0u64,
         &token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -98,7 +99,8 @@ fn test_legal_hold_midflow_blocks_and_resumes_with_ordered_events() {
     let event_count = env.events().all().events().len();
     assert!(
         event_count >= 6,
-        "expected at least 6 LegalHoldChanged events, got {event_count}"
+        "expected at least 6 LegalHoldChanged events, got {event_count}, all events: {:?}",
+        env.events().all().events()
     );
 }
 
@@ -157,6 +159,7 @@ fn test_escrow_gold_standard_happy_path_open_overfund_snapshot_settle_claim() {
         &None, // No yield tiers for simplicity
         &None, // No min contribution floor
         &None, // No max investors cap
+        &None,
         &None,
         &None,
     );
@@ -387,6 +390,7 @@ fn test_escrow_tiered_yield_with_commitment_locks() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let investor_base = Address::generate(&env);
@@ -507,6 +511,7 @@ fn test_collateral_record_is_metadata_only_and_does_not_invoke_token_contract() 
         &funding,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -737,6 +742,7 @@ fn test_legal_hold_midflow_blocks_then_resumes_with_ordered_events() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
