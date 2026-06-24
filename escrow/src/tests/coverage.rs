@@ -46,6 +46,7 @@ fn typed_error_codes_cover_init_and_state_guards() {
             &None,
             &None,
             &None,
+            &None,
         ),
         EscrowError::AmountMustBePositive,
     );
@@ -628,6 +629,7 @@ fn test_bump_ttl_covers_persistent_investor_keys() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1567,7 +1569,7 @@ fn test_record_sme_collateral_commitment_semantics() {
     // 1. Happy path: Record first commitment
     let asset_sym = soroban_sdk::Symbol::new(&env, "USDC");
     let pledge_amount = 5_000i128;
-    
+
     // Set ledger timestamp to a known value
     let mut ledger_info = env.ledger().get();
     ledger_info.timestamp = 10000;
@@ -1645,4 +1647,3 @@ fn test_record_sme_collateral_commitment_semantics() {
         EscrowError::CollateralAssetEmpty,
     );
 }
-

@@ -1520,6 +1520,42 @@ impl LiquifactEscrow {
         env.storage().instance().get(&DataKey::SmeCollateralPledge)
     }
 
+    pub fn revoke_attestation_digest(env: Env, index: u32) {
+        let escrow = Self::get_escrow(env.clone());
+        escrow.admin.require_auth();
+
+        let log: Vec<BytesN<32>> = env
+            .storage()
+            .instance()
+            .get(&DataKey::AttestationAppendLog)
+            .unwrap_or_else(|| Vec::new(&env));
+        assert!(index < log.len(), "attestation index out of range");
+        assert!(
+            !env.storage()
+                .instance()
+                .has(&DataKey::AttestationRevoked(index)),
+            "attestation already revoked at index"
+        );
+
+        env.storage()
+            .instance()
+            .set(&DataKey::AttestationRevoked(index), &true);
+
+        AttestationDigestRevoked {
+            name: symbol_short!("att_rev"),
+            invoice_id: escrow.invoice_id.clone(),
+            index,
+        }
+        .publish(&env);
+    }
+
+    pub fn is_attestation_revoked(env: Env, index: u32) -> bool {
+        env.storage()
+            .instance()
+            .get(&DataKey::AttestationRevoked(index))
+            .unwrap_or(false)
+    }
+
     pub fn is_investor_claimed(env: Env, investor: Address) -> bool {
         Self::get_persistent_investor_claimed(&env, investor)
     }
