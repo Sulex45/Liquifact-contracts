@@ -1098,7 +1098,7 @@ fn test_yield_tier_emitted_between_tiers() {
     client.fund_with_commitment(&inv, &1_000i128, &150u64);
 
     let binding = env.events().all();
-    let event = binding.events().get(0).unwrap();
+    let event = binding.events().first().unwrap();
     assert_eq!(
         *event,
         EscrowFunded {
