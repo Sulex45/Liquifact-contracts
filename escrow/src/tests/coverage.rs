@@ -1539,7 +1539,7 @@ fn test_record_sme_collateral_commitment_semantics() {
     let (_, treasury) = free_addresses(&env);
     client.init(
         &admin,
-        &soroban_sdk::String::from_str(&env, "INV-COLL-001"),
+        &soroban_sdk::String::from_str(&env, "INV_COLL_001"),
         &sme,
         &10_000i128,
         &100,

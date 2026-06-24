@@ -13,7 +13,7 @@ To prevent integration risks, integrators must understand how this metadata-only
 - **No Custody Verification:** The escrow contract does not verify that the SME actually owns, holds, or has custody of the referenced asset.
 - **No Enforcement or Blocking:** Recording a collateral commitment does not block, gate, or restrict any other contract flows. Specifically, it has no effect on settlement ([`LiquifactEscrow::settle`]), SME withdrawal ([`LiquifactEscrow::withdraw`]), investor claims ([`LiquifactEscrow::claim_investor_payout`]), compliance holds, or any other state transition.
 
-Future versions of the platform that enforce asset movement or custody must introduce distinct API endpoints. Historical records of this metadata must never be treated as proof of locked assets.
+Future versions of the platform that enforce asset movement or custody must introduce distinct API endpoints. Historical records of this self-reported metadata are not proof of custody and must never be treated as proof of locked assets.
 
 ## On-chain Behavior
 
