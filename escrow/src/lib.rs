@@ -1053,6 +1053,7 @@ impl LiquifactEscrow {
         max_per_investor: Option<i128>,
         legal_hold_clear_delay: Option<u64>,
         funding_deadline: Option<u64>,
+        allowlist_active: Option<bool>,
     ) -> InvoiceEscrow {
         admin.require_auth();
 
@@ -1151,6 +1152,14 @@ impl LiquifactEscrow {
             env.storage()
                 .instance()
                 .set(&DataKey::LegalHoldClearDelay, &delay);
+        }
+
+        if let Some(active) = allowlist_active {
+            if active {
+                env.storage()
+                    .instance()
+                    .set(&DataKey::AllowlistActive, &true);
+            }
         }
 
         EscrowInitialized {

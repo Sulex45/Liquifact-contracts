@@ -51,8 +51,9 @@ fn init_open(
         &None,
         &None,
         &None,
+        &None,
     );
-    (token, treasury)
+(token, treasury)
 }
 
 /// Initialise an open escrow with a configured legal-hold clear delay.
@@ -82,8 +83,9 @@ fn init_open_with_clear_delay(
         &None,
         &legal_hold_clear_delay,
         &None,
+        &None,
     );
-    (token, treasury)
+(token, treasury)
 }
 
 /// Initialise with a real SAC token, fund to target, and mint `TARGET` tokens
@@ -117,8 +119,9 @@ fn init_funded_with_real_token<'a>(
         &None,
         &None,
         &None,
+        &None,
     );
-    client.fund(investor, &TARGET);
+client.fund(investor, &TARGET);
     sac_admin.mint(&escrow_id, &TARGET);
     (client, escrow_id)
 }
@@ -166,8 +169,9 @@ fn init_settled<'a>(
         &None,
         &None,
         &None,
+        &None,
     );
-    client.fund(investor, &TARGET);
+client.fund(investor, &TARGET);
     client.settle();
     (client, escrow_id, token, treasury)
 }

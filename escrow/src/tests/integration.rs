@@ -56,9 +56,9 @@ fn test_legal_hold_midflow_blocks_and_resumes_with_ordered_events() {
         &None,
         &None,
         &None,
+        &None,
     );
-
-    // We will not fund or settle — just exercise legal hold at multiple points.
+// We will not fund or settle — just exercise legal hold at multiple points.
     // The contract id is derived from the deploy_and_init sequence, so we
     // capture it for auth mock setup.
 
@@ -162,9 +162,9 @@ fn test_escrow_gold_standard_happy_path_open_overfund_snapshot_settle_claim() {
         &None,
         &None,
         &None,
+        &None,
     );
-
-    let initial_escrow = client.get_escrow();
+let initial_escrow = client.get_escrow();
     assert_eq!(
         initial_escrow.status, 0,
         "Escrow should start in Open status"
@@ -391,9 +391,9 @@ fn test_escrow_tiered_yield_with_commitment_locks() {
         &None,
         &None,
         &None,
+        &None,
     );
-
-    let investor_base = Address::generate(&env);
+let investor_base = Address::generate(&env);
     let investor_tier1 = Address::generate(&env);
     let investor_tier2 = Address::generate(&env);
     let investor_tier3 = Address::generate(&env);
@@ -517,9 +517,9 @@ fn test_collateral_record_is_metadata_only_and_does_not_invoke_token_contract() 
         &None,
         &None,
         &None,
+        &None,
     );
-
-    let commitment = client.record_sme_collateral_commitment(&symbol_short!("USDC"), &5_000i128);
+let commitment = client.record_sme_collateral_commitment(&symbol_short!("USDC"), &5_000i128);
     assert_eq!(commitment.asset, symbol_short!("USDC"));
     assert_eq!(commitment.amount, 5_000i128);
     assert!(client.get_sme_collateral_commitment().is_some());
@@ -748,9 +748,9 @@ fn test_legal_hold_midflow_blocks_then_resumes_with_ordered_events() {
         &None,
         &None,
         &None,
+        &None,
     );
-
-    // Initial funding succeeds while hold is off.
+// Initial funding succeeds while hold is off.
     let open_state = client.fund(&investor, &4_000i128);
     assert_eq!(open_state.status, 0);
 
@@ -871,9 +871,9 @@ fn setup_withdraw_with_token(
         &None,
         &None,
         &None,
+        &None,
     );
-
-    let investor = soroban_sdk::Address::generate(env);
+let investor = soroban_sdk::Address::generate(env);
     client.fund(&investor, &target);
 
     // Mint the funded amount into the escrow contract so withdraw() can send it.
@@ -987,8 +987,9 @@ fn withdraw_rejected_wrong_status_open() {
         &None,
         &None,
         &None,
+        &None,
     );
-    // No funding — status is 0.
+// No funding — status is 0.
     client.withdraw(); // must panic: WithdrawalNotFunded
 }
 
@@ -1028,9 +1029,9 @@ fn withdraw_rejected_insufficient_contract_balance() {
         &None,
         &None,
         &None,
+        &None,
     );
-
-    let investor = soroban_sdk::Address::generate(&env);
+let investor = soroban_sdk::Address::generate(&env);
     client.fund(&investor, &target);
 
     // Mint only half — contract balance < funded_amount.

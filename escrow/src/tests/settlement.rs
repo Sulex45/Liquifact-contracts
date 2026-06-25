@@ -1780,11 +1780,6 @@ fn settled_at_recorded_with_maturity() {
         &Address::generate(&env),
         &None,
         &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
     );
 
     let investor = Address::generate(&env);
@@ -1802,3 +1797,4 @@ fn settled_at_recorded_with_maturity() {
         "settled_at must equal the ledger timestamp when settle() succeeds with maturity gate"
     );
 }
+
