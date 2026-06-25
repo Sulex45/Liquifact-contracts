@@ -261,6 +261,8 @@ pub enum EscrowError {
     FundingBatchEmpty = 82,
     /// [`LiquifactEscrow::fund_batch`] exceeded [`MAX_FUND_BATCH`].
     FundingBatchTooLarge = 83,
+    /// [`LiquifactEscrow::fund_batch`] rejected because the batch contains the same investor address more than once.
+    FundingBatchDuplicateInvestor = 84,
     /// [`LiquifactEscrow::update_funding_target`] received a non-positive target.
     TargetNotPositive = 72,
     /// [`LiquifactEscrow::update_funding_target`] called while escrow is not open.
@@ -2206,7 +2208,14 @@ impl LiquifactEscrow {
             n <= MAX_FUND_BATCH,
             EscrowError::FundingBatchTooLarge,
         );
-
+        // Detect duplicate investor addresses before any state mutation.
+        let mut seen: Vec<Address> = Vec::new();
+        for i in 0..n {
+            let (investor, _) = entries.get(i).unwrap();
+            ensure(&env, !seen.contains(&investor), EscrowError::FundingBatchDuplicateInvestor);
+            seen.push_back(investor.clone());
+        }
+        
         let mut escrow = Self::get_escrow(env.clone());
 
         for i in 0..n {
