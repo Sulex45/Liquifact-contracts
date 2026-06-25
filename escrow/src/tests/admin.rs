@@ -777,8 +777,7 @@ fn test_update_funding_target_fails_when_settled() {
 fn test_update_funding_target_fails_when_withdrawn() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, _escrow_id, _sme) =
-        init_and_fund_with_real_token(&env, 5_000i128, "WD001");
+    let (client, _escrow_id, _sme) = init_and_fund_with_real_token(&env, 5_000i128, "WD001");
     client.withdraw(); // status → 3 (withdrawn)
     client.update_funding_target(&6_000i128);
 }
@@ -984,8 +983,7 @@ fn test_update_maturity_fails_when_settled() {
 fn test_update_maturity_fails_when_withdrawn() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, _escrow_id, _sme) =
-        init_and_fund_with_real_token(&env, 5_000i128, "MAT004");
+    let (client, _escrow_id, _sme) = init_and_fund_with_real_token(&env, 5_000i128, "MAT004");
     client.withdraw(); // status → 3
     client.update_maturity(&2000u64);
 }
@@ -1516,4 +1514,103 @@ fn test_rotate_beneficiary_then_withdraw_goes_to_new_sme() {
     client.rotate_beneficiary(&new_sme);
     client.withdraw();
     assert_eq!(token.stellar.balance(&new_sme), TARGET);
+}
+
+#[test]
+fn test_error_code_uniqueness() {
+    let mut discriminants = std::collections::HashSet::new();
+    let codes = [
+        EscrowError::AmountMustBePositive as u32,
+        EscrowError::YieldBpsOutOfRange as u32,
+        EscrowError::EscrowAlreadyInitialized as u32,
+        EscrowError::InvoiceIdInvalidLength as u32,
+        EscrowError::InvoiceIdInvalidCharset as u32,
+        EscrowError::MinContributionNotPositive as u32,
+        EscrowError::MinContributionExceedsAmount as u32,
+        EscrowError::MaxUniqueInvestorsNotPositive as u32,
+        EscrowError::MaxPerInvestorNotPositive as u32,
+        EscrowError::TierYieldOutOfRange as u32,
+        EscrowError::TierYieldBelowBase as u32,
+        EscrowError::TierLockNotIncreasing as u32,
+        EscrowError::TierYieldNotNonDecreasing as u32,
+        EscrowError::EscrowNotInitialized as u32,
+        EscrowError::FundingTokenNotSet as u32,
+        EscrowError::TreasuryNotSet as u32,
+        EscrowError::LegalHoldBlocksTreasuryDustSweep as u32,
+        EscrowError::SweepAmountNotPositive as u32,
+        EscrowError::SweepAmountExceedsMax as u32,
+        EscrowError::DustSweepNotTerminal as u32,
+        EscrowError::NoFundingTokenBalanceToSweep as u32,
+        EscrowError::EffectiveSweepAmountZero as u32,
+        EscrowError::TransferAmountNotPositive as u32,
+        EscrowError::InsufficientTokenBalanceBeforeTransfer as u32,
+        EscrowError::SenderBalanceUnderflow as u32,
+        EscrowError::RecipientBalanceUnderflow as u32,
+        EscrowError::SenderBalanceDeltaMismatch as u32,
+        EscrowError::RecipientBalanceDeltaMismatch as u32,
+        EscrowError::SweepExceedsLiabilityFloor as u32,
+        EscrowError::PrimaryAttestationAlreadyBound as u32,
+        EscrowError::AttestationAppendLogCapacityReached as u32,
+        EscrowError::CollateralAmountNotPositive as u32,
+        EscrowError::CollateralAssetEmpty as u32,
+        EscrowError::CollateralTimestampBackwards as u32,
+        EscrowError::InvestorBatchEmpty as u32,
+        EscrowError::InvestorBatchTooLarge as u32,
+        EscrowError::FundingBatchEmpty as u32,
+        EscrowError::FundingBatchTooLarge as u32,
+        EscrowError::TargetNotPositive as u32,
+        EscrowError::TargetUpdateNotOpen as u32,
+        EscrowError::TargetBelowFundedAmount as u32,
+        EscrowError::CapLowerNotOpen as u32,
+        EscrowError::NoInvestorCapConfigured as u32,
+        EscrowError::NewCapNotLower as u32,
+        EscrowError::NewCapBelowCurrentFunderCount as u32,
+        EscrowError::MaturityUpdateNotOpen as u32,
+        EscrowError::NewAdminSameAsCurrent as u32,
+        EscrowError::MigrationVersionMismatch as u32,
+        EscrowError::AlreadyCurrentSchemaVersion as u32,
+        EscrowError::NoMigrationPath as u32,
+        EscrowError::FundingAmountNotPositive as u32,
+        EscrowError::FundingBelowMinContribution as u32,
+        EscrowError::LegalHoldBlocksFunding as u32,
+        EscrowError::EscrowNotOpenForFunding as u32,
+        EscrowError::InvestorNotAllowlisted as u32,
+        EscrowError::InvestorContributionOverflow as u32,
+        EscrowError::InvestorContributionExceedsCap as u32,
+        EscrowError::UniqueInvestorCapReached as u32,
+        EscrowError::TieredSecondDeposit as u32,
+        EscrowError::InvestorClaimTimeOverflow as u32,
+        EscrowError::FundedAmountOverflow as u32,
+        EscrowError::CommitmentLockExceedsMaturity as u32,
+        EscrowError::LegalHoldBlocksSettlement as u32,
+        EscrowError::SettlementNotFunded as u32,
+        EscrowError::MaturityNotReached as u32,
+        EscrowError::LegalHoldBlocksWithdrawal as u32,
+        EscrowError::WithdrawalNotFunded as u32,
+        EscrowError::LegalHoldBlocksInvestorClaims as u32,
+        EscrowError::NoContributionToClaim as u32,
+        EscrowError::InvestorClaimNotSettled as u32,
+        EscrowError::InvestorCommitmentLockNotExpired as u32,
+        EscrowError::ComputePayoutArithmeticOverflow as u32,
+        EscrowError::LegalHoldBlocksCancelFunding as u32,
+        EscrowError::CancelFundingNotOpen as u32,
+        EscrowError::RefundNotCancelled as u32,
+        EscrowError::NoContributionToRefund as u32,
+        EscrowError::LegalHoldClearRequestMissing as u32,
+        EscrowError::LegalHoldClearNotReady as u32,
+        EscrowError::LegalHoldClearDelayOverflow as u32,
+        EscrowError::FundingDeadlinePassed as u32,
+        EscrowError::LegalHoldBlocksBeneficiaryRotation as u32,
+        EscrowError::RotationNotOpen as u32,
+        EscrowError::NewSmeSameAsCurrent as u32,
+        EscrowError::NoPendingAdmin as u32,
+        EscrowError::InsufficientContractBalance as u32,
+    ];
+    for code in codes.iter() {
+        assert!(
+            discriminants.insert(*code),
+            "Duplicate discriminant: {}",
+            code
+        );
+    }
 }

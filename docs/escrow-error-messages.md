@@ -19,6 +19,9 @@ that domain without renumbering existing SDK mappings.
 Legacy panic strings listed in the reference table are **migration aids only** — they may differ
 from typed error text and must not be used for production branching logic.
 
+### Migration Note: `NoPendingAdmin` (163 → 81)
+Due to a historical collision, `NoPendingAdmin` previously shared the numeric discriminant `163` with `FundingDeadlinePassed`. To preserve strict append-only semantics and ensure unambiguous branching for SDK clients, `NoPendingAdmin` has been reassigned to `81` within the admin-handover range. `FundingDeadlinePassed` remains `163`. Clients matching on `163` will now exclusively match deadline-passed errors.
+
 ## Range-Group Convention
 
 Codes are grouped by domain so SDKs can map coarse categories without parsing variant names:
@@ -30,7 +33,7 @@ Codes are grouped by domain so SDKs can map coarse categories without parsing va
 | Dust sweep + SEP-41 safety | 30–42 | Terminal dust sweep and token transfer invariants | 30, 42 |
 | Attestation | 50–51 | Primary hash binding and append-only digest log | 50, 51 |
 | SME collateral | 60–62 | Off-chain collateral metadata record | 60, 62 |
-| Admin validation | 70–80 | Allowlist batch, funding target, investor cap, maturity, admin handover | 70, 80 |
+| Admin validation | 70–81 | Allowlist batch, funding target, investor cap, maturity, admin handover, accept_admin | 70, 81 |
 | Schema migration | 90–92 | `migrate` version checks | 90, 92 |
 | Funding | 100–111 | Investor deposits, batch funding, and contribution limits | 100, 111 |
 | Funding batch | 82–83 | [`fund_batch`] entry count bounds | 82, 83 |
@@ -38,7 +41,7 @@ Codes are grouped by domain so SDKs can map coarse categories without parsing va
 | Cancel / refund | 140–143 | Cancel funding and investor refunds | 140, 143 |
 | Legal-hold clear (two-phase) | 150–152 | Delayed compliance-hold lift workflow | 150, 152 |
 | Beneficiary rotation | 160–162 | Governed SME address rotation | 160, 162 |
-| Admin handover / funding deadline | 163–164 | `accept_admin` and post-deadline funding | 163, 164 |
+| Funding deadline / balance | 163–164 | Post-deadline funding and contract balance sufficiency | 163, 164 |
 
 See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 [`docs/ESCROW_BENEFICIARY_ROTATION.md`](ESCROW_BENEFICIARY_ROTATION.md), and
@@ -93,6 +96,7 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 78 | `NewCapBelowCurrentFunderCount` | `lower_max_unique_investors` | `new_cap < unique funder count` | Cap cannot evict existing funders | typed |
 | 79 | `MaturityUpdateNotOpen` | `update_maturity` | escrow status `!= 0` | Only update maturity while open | typed |
 | 80 | `NewAdminSameAsCurrent` | `propose_admin` | proposed admin equals current admin | Nominate a different admin | typed |
+| 81 | `NoPendingAdmin` | `accept_admin` | no pending admin nomination stored | Call `propose_admin` first | typed |
 | 82 | `FundingBatchEmpty` | `fund_batch` | `entries.len() == 0` | Pass at least one `(investor, amount)` pair | typed |
 | 83 | `FundingBatchTooLarge` | `fund_batch` | `entries.len() > MAX_FUND_BATCH` | Split into smaller batches | typed |
 | 90 | `MigrationVersionMismatch` | `migrate` | stored version `!= from_version` | Pass matching `from_version` | typed |
@@ -130,8 +134,8 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 160 | `LegalHoldBlocksBeneficiaryRotation` | `rotate_beneficiary` | legal hold active | Clear hold before rotation | typed |
 | 161 | `RotationNotOpen` | `rotate_beneficiary` | status not `0` (open) or `1` (funded) | Rotation only before settlement | typed |
 | 162 | `NewSmeSameAsCurrent` | `rotate_beneficiary` | `new_sme == current sme_address` | Pass a different beneficiary | typed |
-| 163 | `NoPendingAdmin` | `accept_admin` | no pending admin nomination stored | Call `propose_admin` first | typed |
-| 164 | `FundingDeadlinePassed` | `init`, `fund`, `fund_with_commitment`, `fund_batch` | `funding_deadline` configured and `ledger.timestamp()` past deadline | Funding window closed; do not retry deposits | typed |
+| 163 | `FundingDeadlinePassed` | `fund`, `fund_with_commitment`, `fund_batch` | `funding_deadline` configured and `ledger.timestamp()` past deadline | Funding window closed; do not retry deposits | typed |
+| 164 | `InsufficientContractBalance` | `withdraw` | contract token balance `< funded_amount` at withdraw time | Ensure contract is funded before withdrawal | typed |
 
 ### Legacy panic strings (migration aid)
 
@@ -182,6 +186,7 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 78 | `new cap cannot be below current unique funder count` |
 | 79 | `Maturity can only be updated in Open state` |
 | 80 | `New admin must differ from current admin` |
+| 81 | `No pending admin` |
 | 82 | `fund_batch entries vector must be non-empty` |
 | 83 | `fund_batch entries vector length exceeds MAX_FUND_BATCH` |
 | 90 | `from_version does not match stored version` |
@@ -219,8 +224,8 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 160 | `Legal hold blocks beneficiary rotation` |
 | 161 | `Beneficiary rotation not permitted in current escrow state` |
 | 162 | `New SME address must differ from current beneficiary` |
-| 163 | `No pending admin` |
-| 164 | `Funding deadline has passed` |
+| 163 | `Funding deadline has passed` |
+| 164 | `Contract balance below funded amount` |
 
 ## Client Guidance
 
@@ -236,11 +241,10 @@ Recommended SDK category mappings:
 | 30–42 | Dust sweep or token integration failure |
 | 50–51 | Attestation failure |
 | 60–62 | Collateral metadata failure |
-| 70–80, 82–83 | Administrative validation or batch-funding bounds failure |
+| 70–81, 82–83 | Administrative validation or batch-funding bounds failure |
 | 90–92 | Migration failure |
 | 100–111 | Funding failure |
-| 163 | Admin handover not pending |
-| 164 | Funding deadline expired |
+| 163–164 | Funding deadline or contract balance failure |
 | 120–129 | Settlement, withdrawal, or investor payout failure |
 | 140–143 | Cancellation or refund failure |
 | 150–152 | Legal-hold clear workflow failure |

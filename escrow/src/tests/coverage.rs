@@ -201,10 +201,11 @@ fn escrow_error_discriminants_match_canonical_table() {
         (EscrowError::LegalHoldBlocksBeneficiaryRotation, 160),
         (EscrowError::RotationNotOpen, 161),
         (EscrowError::NewSmeSameAsCurrent, 162),
-        (EscrowError::FundingDeadlinePassed, 164),
-        (EscrowError::NoPendingAdmin, 163),
+        (EscrowError::FundingDeadlinePassed, 163),
+        (EscrowError::NoPendingAdmin, 81),
+        (EscrowError::InsufficientContractBalance, 164),
     ];
-    assert_eq!(TABLE.len(), 84);
+    assert_eq!(TABLE.len(), 85);
     for (variant, code) in TABLE {
         assert_eq!(*variant as u32, *code, "discriminant drift for code {code}");
     }
