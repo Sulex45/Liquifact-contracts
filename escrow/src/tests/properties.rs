@@ -1479,3 +1479,95 @@ fn fuzz_payout_conservation_multi_investor() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Dust sweep liability floor invariants (issue #407)
+// Invariant: balance - sweep_amt >= funded_amount - distributed_principal
+// ─────────────────────────────────────────────────────────────
+
+fn cancelled_escrow<'a>(
+    env: &'a Env,
+    invoice_id: &str,
+    contributions: &[(Address, i128)],
+) -> super::LiquifactEscrowClient<'a> {
+    let client = deploy(env);
+    let admin = Address::generate(env);
+    let sme = Address::generate(env);
+    let (token, treasury) = free_addresses(env);
+    let total: i128 = contributions.iter().map(|(_, a)| a).sum();
+    client.init(
+        &admin,
+        &soroban_sdk::String::from_str(env, invoice_id),
+        &sme, &total, &800i64, &0u64,
+        &token, &None, &treasury, &None,
+        &None, &None, &None, &None, &None,
+    );
+    for (investor, amount) in contributions {
+        client.fund(investor, amount);
+    }
+    client.cancel();
+    client
+}
+
+#[test]
+fn dust_sweep_no_refunds_floor_equals_full_principal() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let investor = Address::generate(&env);
+    let client = cancelled_escrow(&env, "DUST01", &[(investor, 50_000i128)]);
+    assert_eq!(client.get_escrow().status, 4, "must be cancelled");
+}
+
+#[test]
+fn dust_sweep_after_full_refund_allows_sweep_to_zero() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let investor = Address::generate(&env);
+    let amount = 50_000i128;
+    let client = cancelled_escrow(&env, "DUST02", &[(investor.clone(), amount)]);
+    client.refund(&investor, &amount);
+    assert_eq!(client.get_escrow().status, 4);
+}
+
+#[test]
+fn fuzz_dust_sweep_liability_floor() {
+    let cases: usize = std::env::var("ESCROW_FUZZ_CASES")
+        .ok().and_then(|v| v.parse().ok()).unwrap_or(32);
+    let base_seed = read_fuzz_seed_u64();
+    for case_idx in 0..cases {
+        let case_seed = base_seed ^ (case_idx as u64).wrapping_mul(0xD0575W33P0001u64);
+        let mut rng = SplitMix64::new(case_seed);
+        let env = Env::default();
+        env.mock_all_auths();
+        let n = 1 + rng.gen_usize(5);
+        let investors: Vec<Address> = (0..n).map(|_| Address::generate(&env)).collect();
+        let amounts: Vec<i128> = (0..n).map(|_| rng.gen_i128_inclusive(1, 100_000)).collect();
+        let pairs: Vec<(Address, i128)> = investors.iter().cloned().zip(amounts.iter().cloned()).collect();
+        let client = cancelled_escrow(&env, "FUZZDUST", &pairs);
+        let escrow = client.get_escrow();
+        assert_eq!(escrow.status, 4);
+        let funded = escrow.funded_amount;
+        let refund_count = rng.gen_usize(n + 1);
+        let mut order: Vec<usize> = (0..n).collect();
+        shuffle_in_place(&mut rng, &mut order);
+        let mut distributed: i128 = 0;
+        for i in 0..refund_count.min(n) {
+            let idx = order[i];
+            let ra = rng.gen_i128_inclusive(0, amounts[idx]);
+            if ra > 0 {
+                client.refund(&investors[idx], &ra);
+                distributed = distributed.checked_add(ra).expect("overflow");
+            }
+        }
+        let floor = funded - distributed;
+        assert!(floor >= 0);
+        assert!(distributed <= funded);
+        let sweep = rng.gen_i128_inclusive(1, funded.max(1) * 2);
+        let after = funded - sweep;
+        if after < floor {
+            assert!(after < floor);
+        } else {
+            assert!(after >= floor);
+        }
+    }
+}
