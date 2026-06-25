@@ -3277,7 +3277,10 @@ fn test_remaining_funding_capacity() {
     let uninitialized_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         uninitialized_client.get_remaining_funding_capacity();
     }));
-    assert!(uninitialized_res.is_err(), "uninitialized capacity check should panic");
+    assert!(
+        uninitialized_res.is_err(),
+        "uninitialized capacity check should panic"
+    );
 
     // 2. Initialized state (zero funded)
     client.init(
@@ -3301,7 +3304,10 @@ fn test_remaining_funding_capacity() {
 
     // 3. Partially funded state
     client.fund(&investor, &(TARGET / 4));
-    assert_eq!(client.get_remaining_funding_capacity(), TARGET - (TARGET / 4));
+    assert_eq!(
+        client.get_remaining_funding_capacity(),
+        TARGET - (TARGET / 4)
+    );
 
     // 4. Exactly funded state
     client.fund(&investor, &(3 * TARGET / 4));
@@ -3329,4 +3335,3 @@ fn test_remaining_funding_capacity() {
     overfund_client.fund(&investor, &1_500i128);
     assert_eq!(overfund_client.get_remaining_funding_capacity(), 0);
 }
-
