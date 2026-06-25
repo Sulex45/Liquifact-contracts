@@ -1371,11 +1371,11 @@ fn test_rotate_beneficiary_success_dual_auth() {
     let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
     let contract_id = client.address.clone();
-    
+
     let updated = client.rotate_beneficiary(&new_sme);
     assert_eq!(updated.sme_address, new_sme);
     assert_eq!(client.get_escrow().sme_address, new_sme);
-    
+
     assert_eq!(
         env.events().all().events().last().unwrap().clone(),
         crate::BeneficiaryRotated {
@@ -1391,24 +1391,42 @@ fn test_rotate_beneficiary_success_dual_auth() {
 #[test]
 #[should_panic]
 fn test_rotate_beneficiary_only_sme_auth_fails() {
+    use soroban_sdk::{testutils::MockAuth, IntoVal, Vec as SorobanVec};
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, sme) = setup(&env);
     let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-    env.mock_auths(&[&sme]); // Only SME auth
+    env.mock_auths(&[MockAuth {
+        address: &sme,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &client.address,
+            fn_name: "rotate_beneficiary",
+            args: SorobanVec::from_array(&env, [(new_sme.clone(),).into_val(&env)]),
+            sub_invokes: &[],
+        },
+    }]);
     client.rotate_beneficiary(&new_sme);
 }
 
 #[test]
 #[should_panic]
 fn test_rotate_beneficiary_only_admin_auth_fails() {
+    use soroban_sdk::{testutils::MockAuth, IntoVal, Vec as SorobanVec};
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, sme) = setup(&env);
     let new_sme = Address::generate(&env);
     default_init(&client, &env, &admin, &sme);
-    env.mock_auths(&[&admin]); // Only admin auth
+    env.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &client.address,
+            fn_name: "rotate_beneficiary",
+            args: SorobanVec::from_array(&env, [(new_sme.clone(),).into_val(&env)]),
+            sub_invokes: &[],
+        },
+    }]);
     client.rotate_beneficiary(&new_sme);
 }
 
@@ -1530,7 +1548,12 @@ fn test_rotate_beneficiary_then_withdraw_goes_to_new_sme() {
         &None,
     );
     token.stellar.mint(&investor, &TARGET);
-    token.stellar.approve(&investor, &escrow_id, &TARGET);
+    token.stellar.approve(
+        &investor,
+        &escrow_id,
+        &TARGET,
+        &(env.ledger().sequence() + 10_000),
+    );
     client.fund(&investor, &TARGET);
     client.rotate_beneficiary(&new_sme);
     client.withdraw();

@@ -2,9 +2,7 @@ use super::{
     free_addresses, install_stellar_asset_token, setup, MAX_ATTESTATION_APPEND_ENTRIES,
     SCHEMA_VERSION,
 };
-use crate::{
-    CollateralCommitmentSnapshot, DataKey, EscrowCloseSnapshot, EscrowError, YieldTier,
-};
+use crate::{CollateralCommitmentSnapshot, DataKey, EscrowCloseSnapshot, EscrowError, YieldTier};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, BytesN, Env, Error, InvokeError, Vec as SorobanVec,
@@ -47,6 +45,7 @@ fn typed_error_codes_cover_init_and_state_guards() {
             &funding_token,
             &None,
             &treasury,
+            &None,
             &None,
             &None,
             &None,
@@ -220,10 +219,10 @@ fn escrow_error_discriminants_match_canonical_table() {
         (EscrowError::LegalHoldBlocksBeneficiaryRotation, 160),
         (EscrowError::RotationNotOpen, 161),
         (EscrowError::NewSmeSameAsCurrent, 162),
-        (EscrowError::FundingDeadlinePassed, 163),
+        (EscrowError::FundingDeadlinePassed, 164),
         (EscrowError::NoPendingAdmin, 163),
     ];
-    assert_eq!(TABLE.len(), 83);
+    assert_eq!(TABLE.len(), 84);
     for (variant, code) in TABLE {
         assert_eq!(*variant as u32, *code, "discriminant drift for code {code}");
     }
@@ -250,6 +249,7 @@ fn typed_error_codes_cover_range_boundaries() {
             &funding_token,
             &None,
             &treasury,
+            &None,
             &None,
             &None,
             &None,
@@ -284,6 +284,7 @@ fn typed_error_codes_cover_range_boundaries() {
             &None,
             &None,
             &None,
+            &None,
         ),
         EscrowError::TierYieldNotNonDecreasing,
     );
@@ -305,6 +306,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -337,6 +339,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &None,
         &None,
         &None,
+        &None,
     );
     hold_sweep_client.set_legal_hold(&true);
     assert_contract_error(
@@ -364,6 +367,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &None,
         &None,
         &None,
+        &None,
     );
     token.stellar.mint(&floor_client.address, &fund_amount);
     floor_client.fund(&sweep_investor, &fund_amount);
@@ -385,6 +389,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -422,6 +427,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &None,
         &None,
         &None,
+        &None,
     );
     let asset = soroban_sdk::Symbol::new(&env, "GOLD");
     assert_contract_error(
@@ -436,7 +442,7 @@ fn typed_error_codes_cover_range_boundaries() {
         EscrowError::CollateralTimestampBackwards,
     );
 
-    // Admin group: 72 and 80 (skip legacy 70–78)
+    // Admin group: 72 and 80
     let admin_client = super::deploy(&env);
     admin_client.init(
         &admin,
@@ -448,6 +454,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -475,6 +482,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -511,6 +519,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &None,
         &None,
         &None,
+        &None,
     );
     assert_contract_error(
         fund_client.try_fund(&investor, &0),
@@ -529,6 +538,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -558,6 +568,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -593,6 +604,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &None,
         &None,
         &Some(10u64),
+        &None,
     );
     lh_client.set_legal_hold(&true);
     assert_contract_error(
@@ -617,6 +629,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -647,6 +660,7 @@ fn typed_error_codes_cover_range_boundaries() {
         &rot_token.id,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -684,6 +698,7 @@ fn typed_error_codes_cover_legal_hold_clear_delay_overflow() {
         &None,
         &None,
         &Some(10u64),
+        &None,
     );
     client.set_legal_hold(&true);
     assert_contract_error(
@@ -709,6 +724,7 @@ fn test_migrate_wrong_version() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -1231,6 +1247,7 @@ fn test_bump_ttl_covers_persistent_investor_keys() {
         &funding_token,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,
@@ -2219,6 +2236,7 @@ fn test_get_escrow_summary_with_collateral_and_attestations() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     // Record SME collateral
@@ -2296,6 +2314,7 @@ fn test_record_sme_collateral_commitment_semantics() {
         &token.id,
         &None,
         &treasury,
+        &None,
         &None,
         &None,
         &None,

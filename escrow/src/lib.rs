@@ -351,7 +351,7 @@ pub enum EscrowError {
     /// Computing the legal-hold clear ready-at timestamp would overflow.
     LegalHoldClearDelayOverflow = 152,
     /// Funding deadline has passed, new deposits are rejected.
-    FundingDeadlinePassed = 163,
+    FundingDeadlinePassed = 164,
 
     /// A legal hold blocks rotating the beneficiary (SME) address.
     LegalHoldBlocksBeneficiaryRotation = 160,
@@ -1040,8 +1040,14 @@ impl LiquifactEscrow {
 
         // Validate funding deadline
         if let Some(deadline) = funding_deadline {
-            ensure(&env, deadline > env.ledger().timestamp(), EscrowError::FundingDeadlinePassed);
-            env.storage().instance().set(&DataKey::FundingDeadline, &deadline);
+            ensure(
+                &env,
+                deadline > env.ledger().timestamp(),
+                EscrowError::FundingDeadlinePassed,
+            );
+            env.storage()
+                .instance()
+                .set(&DataKey::FundingDeadline, &deadline);
         }
 
         Self::validate_yield_tiers_table(&env, &yield_tiers, yield_bps);
@@ -2247,7 +2253,11 @@ impl LiquifactEscrow {
 
         // Check funding deadline
         if let Some(deadline) = env.storage().instance().get(&DataKey::FundingDeadline) {
-            ensure(&env, env.ledger().timestamp() <= deadline, EscrowError::FundingDeadlinePassed);
+            ensure(
+                &env,
+                env.ledger().timestamp() <= deadline,
+                EscrowError::FundingDeadlinePassed,
+            );
         }
 
         if Self::is_allowlist_active(env.clone()) {

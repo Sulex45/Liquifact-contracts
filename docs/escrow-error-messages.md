@@ -38,7 +38,7 @@ Codes are grouped by domain so SDKs can map coarse categories without parsing va
 | Cancel / refund | 140–143 | Cancel funding and investor refunds | 140, 143 |
 | Legal-hold clear (two-phase) | 150–152 | Delayed compliance-hold lift workflow | 150, 152 |
 | Beneficiary rotation | 160–162 | Governed SME address rotation | 160, 162 |
-| Admin handover / funding deadline | 163 | `accept_admin` and post-deadline funding (shared code — see note below) | 163 |
+| Admin handover / funding deadline | 163–164 | `accept_admin` and post-deadline funding | 163, 164 |
 
 See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 [`docs/ESCROW_BENEFICIARY_ROTATION.md`](ESCROW_BENEFICIARY_ROTATION.md), and
@@ -130,12 +130,8 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 160 | `LegalHoldBlocksBeneficiaryRotation` | `rotate_beneficiary` | legal hold active | Clear hold before rotation | typed |
 | 161 | `RotationNotOpen` | `rotate_beneficiary` | status not `0` (open) or `1` (funded) | Rotation only before settlement | typed |
 | 162 | `NewSmeSameAsCurrent` | `rotate_beneficiary` | `new_sme == current sme_address` | Pass a different beneficiary | typed |
-| 163 | `FundingDeadlinePassed` | `init`, `fund`, `fund_with_commitment`, `fund_batch` | `funding_deadline` configured and `ledger.timestamp()` past deadline | Funding window closed; do not retry deposits | typed |
 | 163 | `NoPendingAdmin` | `accept_admin` | no pending admin nomination stored | Call `propose_admin` first | typed |
-
-> **Note:** codes **163** is overloaded — `FundingDeadlinePassed` and `NoPendingAdmin` share the
-> same numeric discriminant. SDKs cannot distinguish them by code alone; disambiguate by entrypoint
-> and simulation context until a follow-up assigns a unique code to one variant.
+| 164 | `FundingDeadlinePassed` | `init`, `fund`, `fund_with_commitment`, `fund_batch` | `funding_deadline` configured and `ledger.timestamp()` past deadline | Funding window closed; do not retry deposits | typed |
 
 ### Legacy panic strings (migration aid)
 
@@ -223,7 +219,8 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 160 | `Legal hold blocks beneficiary rotation` |
 | 161 | `Beneficiary rotation not permitted in current escrow state` |
 | 162 | `New SME address must differ from current beneficiary` |
-| 163 | `Funding deadline has passed` / `No pending admin` |
+| 163 | `No pending admin` |
+| 164 | `Funding deadline has passed` |
 
 ## Client Guidance
 
@@ -242,7 +239,8 @@ Recommended SDK category mappings:
 | 70–80, 82–83 | Administrative validation or batch-funding bounds failure |
 | 90–92 | Migration failure |
 | 100–111 | Funding failure |
-| 163 | Funding deadline expired or admin handover not pending |
+| 163 | Admin handover not pending |
+| 164 | Funding deadline expired |
 | 120–129 | Settlement, withdrawal, or investor payout failure |
 | 140–143 | Cancellation or refund failure |
 | 150–152 | Legal-hold clear workflow failure |

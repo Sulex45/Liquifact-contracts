@@ -339,6 +339,7 @@ fn test_per_investor_contribution_uses_persistent_storage() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &500i128);
 
@@ -982,6 +983,7 @@ fn test_yield_tier_emitted_in_event() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv = Address::generate(&env);
@@ -1056,6 +1058,7 @@ fn test_yield_tier_emitted_no_tiers() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv = Address::generate(&env);
@@ -1111,6 +1114,7 @@ fn test_yield_tier_emitted_between_tiers() {
         &None,
         &tre,
         &Some(tiers),
+        &None,
         &None,
         &None,
         &None,
@@ -2754,6 +2758,7 @@ fn init_with_maturity(
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -2838,7 +2843,6 @@ fn zero_lock_with_maturity_is_always_accepted() {
     assert_eq!(escrow.status, 0);
     assert_eq!(client.get_investor_claim_not_before(&investor), 0u64);
 }
-
 #[test]
 fn lock_with_zero_maturity_is_always_accepted() {
     // maturity==0 means no maturity lock; any lock_secs is fine
@@ -2857,10 +2861,39 @@ fn lock_with_zero_maturity_is_always_accepted() {
         &sme,
         &10_000i128,
         &800i64,
-        &0u64, // no maturity
+        &0u64,
+        // no maturity
         &token,
         &None,
         &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+    let escrow = client.fund_with_commitment(&investor, &1_000i128, &9999u64);
+    assert_eq!(escrow.status, 0);
+    assert_eq!(client.get_investor_claim_not_before(&investor), 10999u64);
+}
+
+#[test]
+fn plain_fund_with_maturity_ignores_lock_bound() {
+    // fund() (simple_fund=true) never sets a claim lock; bound is irrelevant
+    let env = Env::default();
+    env.mock_all_auths();
+    let mut li = env.ledger().get();
+    li.timestamp = 1000;
+    env.ledger().set(li);
+    let (client, admin, sme) = setup(&env);
+    let investor = soroban_sdk::Address::generate(&env);
+    init_with_maturity(&env, &client, &admin, &sme, 2000);
+    // fund() should succeed regardless of maturity; it never imposes a lock
+    let escrow = client.fund(&investor, &1_000i128);
+    assert_eq!(escrow.status, 0);
+    assert_eq!(client.get_investor_claim_not_before(&investor), 0u64);
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests for fund_batch entrypoint (Issue #311)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2916,6 +2949,7 @@ fn test_fund_batch_equals_n_single_funds() {
             &tok,
             &None,
             &tre,
+            &None,
             &None,
             &None,
             &None,
@@ -2989,6 +3023,7 @@ fn test_fund_batch_per_investor_cap_rejection() {
         &None,
         &Some(per_investor_cap),
         &None,
+        &None,
     );
 
     let mut entries = SorobanVec::new(&env);
@@ -3023,27 +3058,8 @@ fn test_fund_batch_mid_batch_funded_transition() {
         &None,
         &None,
         &None,
+        &None,
     );
-    let escrow = client.fund_with_commitment(&investor, &1_000i128, &9999u64);
-    assert_eq!(escrow.status, 0);
-    assert_eq!(client.get_investor_claim_not_before(&investor), 10999u64);
-}
-
-#[test]
-fn plain_fund_with_maturity_ignores_lock_bound() {
-    // fund() (simple_fund=true) never sets a claim lock; bound is irrelevant
-    let env = Env::default();
-    env.mock_all_auths();
-    let mut li = env.ledger().get();
-    li.timestamp = 1000;
-    env.ledger().set(li);
-    let (client, admin, sme) = setup(&env);
-    let investor = soroban_sdk::Address::generate(&env);
-    init_with_maturity(&env, &client, &admin, &sme, 2000);
-    // fund() should succeed regardless of maturity; it never imposes a lock
-    let escrow = client.fund(&investor, &1_000i128);
-    assert_eq!(escrow.status, 0);
-    assert_eq!(client.get_investor_claim_not_before(&investor), 0u64);
 
     let inv1 = Address::generate(&env);
     let inv2 = Address::generate(&env);
@@ -3102,6 +3118,7 @@ fn test_fund_batch_duplicate_addresses() {
         &None,
         &None,
         &Some(per_investor_cap),
+        &None,
         &None,
     );
 
@@ -3179,6 +3196,7 @@ fn test_fund_batch_max_batch_size() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     // Create exactly MAX_FUND_BATCH entries
@@ -3221,6 +3239,7 @@ fn test_fund_batch_preserves_event_semantics() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv1 = Address::generate(&env);
@@ -3234,7 +3253,11 @@ fn test_fund_batch_preserves_event_semantics() {
 
     // Verify events emitted
     let events = env.events().all();
-    assert_eq!(events.len(), 2, "should emit 2 EscrowFunded events");
+    assert_eq!(
+        events.events().len(),
+        2,
+        "should emit 2 EscrowFunded events"
+    );
 
     // Each event corresponds to a fund operation
     // (Detailed event field verification depends on EscrowFunded structure)
