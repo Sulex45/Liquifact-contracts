@@ -2193,7 +2193,7 @@ impl LiquifactEscrow {
         ensure(&env, n > 0, EscrowError::FundingBatchEmpty);
         ensure(
             &env,
-            (n as u32) <= MAX_FUND_BATCH,
+            n <= MAX_FUND_BATCH,
             EscrowError::FundingBatchTooLarge,
         );
 
