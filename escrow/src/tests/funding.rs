@@ -339,6 +339,7 @@ fn test_per_investor_contribution_uses_persistent_storage() {
         &None,
         &None,
         &None,
+        &None,
     );
     client.fund(&investor, &500i128);
 
@@ -982,6 +983,7 @@ fn test_yield_tier_emitted_in_event() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv = Address::generate(&env);
@@ -1056,6 +1058,7 @@ fn test_yield_tier_emitted_no_tiers() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv = Address::generate(&env);
@@ -1111,6 +1114,7 @@ fn test_yield_tier_emitted_between_tiers() {
         &None,
         &tre,
         &Some(tiers),
+        &None,
         &None,
         &None,
         &None,
@@ -2754,6 +2758,7 @@ fn init_with_maturity(
         &None,
         &None,
         &None,
+        &None,
     );
 }
 
@@ -2861,6 +2866,15 @@ fn lock_with_zero_maturity_is_always_accepted() {
         &token,
         &None,
         &treasury,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+        &None,
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests for fund_batch entrypoint (Issue #311)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2916,6 +2930,7 @@ fn test_fund_batch_equals_n_single_funds() {
             &tok,
             &None,
             &tre,
+            &None,
             &None,
             &None,
             &None,
@@ -2989,6 +3004,7 @@ fn test_fund_batch_per_investor_cap_rejection() {
         &None,
         &Some(per_investor_cap),
         &None,
+        &None,
     );
 
     let mut entries = SorobanVec::new(&env);
@@ -3002,9 +3018,13 @@ fn test_fund_batch_per_investor_cap_rejection() {
 fn test_fund_batch_mid_batch_funded_transition() {
     let env = Env::default();
     env.mock_all_auths();
+    let mut li = env.ledger().get();
+    li.timestamp = 1000;
+    env.ledger().set(li);
     let client = deploy(&env);
     let admin = Address::generate(&env);
     let sme = Address::generate(&env);
+    let investor = Address::generate(&env);
     let (tok, tre) = free_addresses(&env);
 
     let target = 100_000i128;
@@ -3018,6 +3038,7 @@ fn test_fund_batch_mid_batch_funded_transition() {
         &tok,
         &None,
         &tre,
+        &None,
         &None,
         &None,
         &None,
@@ -3103,6 +3124,7 @@ fn test_fund_batch_duplicate_addresses() {
         &None,
         &Some(per_investor_cap),
         &None,
+        &None,
     );
 
     let mut entries = SorobanVec::new(&env);
@@ -3179,6 +3201,7 @@ fn test_fund_batch_max_batch_size() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     // Create exactly MAX_FUND_BATCH entries
@@ -3221,6 +3244,7 @@ fn test_fund_batch_preserves_event_semantics() {
         &None,
         &None,
         &None,
+        &None,
     );
 
     let inv1 = Address::generate(&env);
@@ -3234,7 +3258,7 @@ fn test_fund_batch_preserves_event_semantics() {
 
     // Verify events emitted
     let events = env.events().all();
-    assert_eq!(events.len(), 2, "should emit 2 EscrowFunded events");
+    assert_eq!(events.events().len(), 2, "should emit 2 EscrowFunded events");
 
     // Each event corresponds to a fund operation
     // (Detailed event field verification depends on EscrowFunded structure)

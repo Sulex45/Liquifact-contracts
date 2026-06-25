@@ -10,7 +10,7 @@
 use super::{
     AttestationDigestRevoked, DataKey, EscrowError, EscrowFunded, FundingTargetUpdated, LiquifactEscrow,
     LiquifactEscrowClient, YieldTier, MAX_ATTESTATION_APPEND_ENTRIES, MAX_DUST_SWEEP_AMOUNT,
-    MAX_FUND_BATCH, SCHEMA_VERSION,
+    MAX_FUND_BATCH, SCHEMA_VERSION, EscrowInitialized, MaxUniqueInvestorsCapLowered,
 };
 use soroban_sdk::{
     symbol_short,

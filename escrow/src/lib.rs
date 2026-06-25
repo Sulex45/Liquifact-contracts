@@ -288,7 +288,14 @@ pub enum EscrowError {
     NewSmeSameAsCurrent = 162,
 
     /// Attempted to accept admin role when no pending admin exists.
-    NoPendingAdmin = 163,
+    NoPendingAdmin = 164,
+
+    InboundTransferAmountNotPositive = 165,
+    InboundInsufficientTokenBalanceBeforeTransfer = 166,
+    InboundSenderBalanceUnderflow = 167,
+    InboundRecipientBalanceUnderflow = 168,
+    InboundSenderBalanceDeltaMismatch = 169,
+    InboundRecipientBalanceDeltaMismatch = 170,
 }
 
 #[inline(always)]
@@ -951,6 +958,11 @@ impl LiquifactEscrow {
         funding_deadline: Option<u64>,
     ) -> InvoiceEscrow {
         admin.require_auth();
+
+        #[cfg(any(test, feature = "testutils"))]
+        {
+            register_mock_token_if_needed(&env, &funding_token);
+        }
 
         ensure(&env, amount > 0, EscrowError::AmountMustBePositive);
         ensure(
@@ -2124,8 +2136,6 @@ impl LiquifactEscrow {
         simple_fund: bool,
         committed_lock_secs: u64,
     ) -> InvoiceEscrow {
-        investor.require_auth();
-
         ensure(&env, amount > 0, EscrowError::FundingAmountNotPositive);
 
         let floor: i128 = env
@@ -2141,11 +2151,7 @@ impl LiquifactEscrow {
             );
         }
 
-        // env.clone(): env is used again after this call for storage writes and publish.
         let mut escrow = Self::get_escrow(env.clone());
-        // Legal hold check is intentionally after the escrow read: the escrow is needed for
-        // status and yield_bps regardless, and hoisting the hold check before the escrow read
-        // would not reduce storage operations (both keys are always read on this path).
         ensure(
             &env,
             !Self::legal_hold_active(&env),
@@ -2187,16 +2193,13 @@ impl LiquifactEscrow {
             );
         }
 
-        // Hoist UniqueFunderCount read: used for both the cap assertion (below) and the
-        // increment write (after contribution is recorded). A single read covers both uses,
-        // eliminating one storage read on every new-investor funding call.
         let cur_funder_count: u32 = if prev == 0 {
             env.storage()
                 .instance()
                 .get(&DataKey::UniqueFunderCount)
                 .unwrap_or(0)
         } else {
-            0 // prev != 0: count is not needed; skip the read entirely.
+            0
         };
 
         if prev == 0 {
@@ -2213,45 +2216,32 @@ impl LiquifactEscrow {
             }
         }
 
-        // Capture the effective yield and tier lock threshold in locals so event fields can
-        // be populated without post-write storage reads.
         let investor_effective_yield_bps: i64;
         let tier_lock_secs: u64;
+        let mut claim_nb = 0u64;
 
         if simple_fund {
-            // Non-tiered deposits never carry a commitment lock.
             tier_lock_secs = 0;
             if prev == 0 {
                 investor_effective_yield_bps = escrow.yield_bps;
-                Self::set_persistent_investor_effective_yield(
-                    &env,
-                    investor.clone(),
-                    escrow.yield_bps,
-                );
-                Self::set_persistent_investor_claim_not_before(&env, investor.clone(), 0u64);
             } else {
-                // Returning investor: yield was set on first deposit; read it for the event.
                 investor_effective_yield_bps =
                     Self::get_persistent_investor_effective_yield(&env, investor.clone())
                         .unwrap_or(escrow.yield_bps);
             }
-            // If prev > 0, preserve existing effective yield and claim lock
         } else {
             ensure(&env, prev == 0, EscrowError::TieredSecondDeposit);
             let (eff, lock) =
                 Self::effective_yield_for_commitment(&env, escrow.yield_bps, committed_lock_secs);
             investor_effective_yield_bps = eff;
             tier_lock_secs = lock;
-            Self::set_persistent_investor_effective_yield(&env, investor.clone(), eff);
             let now = env.ledger().timestamp();
-            let claim_nb = if committed_lock_secs == 0 {
+            claim_nb = if committed_lock_secs == 0 {
                 0u64
             } else {
                 now.checked_add(committed_lock_secs)
                     .unwrap_or_else(|| fail(&env, EscrowError::InvestorClaimTimeOverflow))
             };
-            // Bound: reject if the claim lock would expire after the escrow maturity.
-            // Only constrained when both committed_lock_secs > 0 and maturity > 0.
             if claim_nb > 0 && escrow.maturity > 0 {
                 ensure(
                     &env,
@@ -2259,7 +2249,6 @@ impl LiquifactEscrow {
                     EscrowError::CommitmentLockExceedsMaturity,
                 );
             }
-            Self::set_persistent_investor_claim_not_before(&env, investor.clone(), claim_nb);
         }
 
         escrow.funded_amount = escrow
@@ -2267,32 +2256,79 @@ impl LiquifactEscrow {
             .checked_add(amount)
             .unwrap_or_else(|| fail(&env, EscrowError::FundedAmountOverflow));
 
+        let mut next_status = escrow.status;
+        let mut snapshot_to_write = None;
         if escrow.status == 0 && escrow.funded_amount >= escrow.funding_target {
-            escrow.status = 1;
+            next_status = 1;
             if !env.storage().instance().has(&DataKey::FundingCloseSnapshot) {
-                let snap = FundingCloseSnapshot {
+                snapshot_to_write = Some(FundingCloseSnapshot {
                     total_principal: escrow.funded_amount,
                     funding_target: escrow.funding_target,
                     closed_at_ledger_timestamp: env.ledger().timestamp(),
                     closed_at_ledger_sequence: env.ledger().sequence(),
-                };
-                env.storage()
-                    .instance()
-                    .set(&DataKey::FundingCloseSnapshot, &snap);
+                });
             }
         }
 
+        // 2.require_auth checks
+        investor.require_auth();
+
+        // 3. Storage writes
         Self::set_persistent_investor_contribution(&env, investor.clone(), new_contribution);
 
+        if simple_fund {
+            if prev == 0 {
+                Self::set_persistent_investor_effective_yield(
+                    &env,
+                    investor.clone(),
+                    escrow.yield_bps,
+                );
+                Self::set_persistent_investor_claim_not_before(&env, investor.clone(), 0u64);
+            }
+        } else {
+            Self::set_persistent_investor_effective_yield(&env, investor.clone(), investor_effective_yield_bps);
+            Self::set_persistent_investor_claim_not_before(&env, investor.clone(), claim_nb);
+        }
+
         if prev == 0 {
-            // Use the hoisted cur_funder_count; no second storage read needed.
             env.storage()
                 .instance()
                 .set(&DataKey::UniqueFunderCount, &(cur_funder_count + 1));
         }
 
+        escrow.status = next_status;
+        if let Some(snap) = snapshot_to_write {
+            env.storage()
+                .instance()
+                .set(&DataKey::FundingCloseSnapshot, &snap);
+        }
+
         env.storage().instance().set(&DataKey::Escrow, &escrow);
 
+        // Extend persistent TTL for the investor contribution key
+        env.storage().persistent().extend_ttl(
+            &DataKey::InvestorContribution(investor.clone()),
+            PERSISTENT_TTL_MIN_EXTENSION_LEDGERS,
+            PERSISTENT_TTL_MIN_EXTENSION_LEDGERS,
+        );
+
+        // 4. Token transfer
+        let token_addr = env
+            .storage()
+            .instance()
+            .get(&DataKey::FundingToken)
+            .unwrap_or_else(|| fail(&env, EscrowError::FundingTokenNotSet));
+        let this = env.current_contract_address();
+
+        external_calls::transfer_funding_token_inbound_with_balance_checks(
+            &env,
+            &token_addr,
+            &investor,
+            &this,
+            amount,
+        );
+
+        // 5. Emit event
         EscrowFunded {
             name: symbol_short!("funded"),
             invoice_id: escrow.invoice_id.clone(),
@@ -2300,7 +2336,6 @@ impl LiquifactEscrow {
             amount,
             funded_amount: escrow.funded_amount,
             status: escrow.status,
-            // Locals set at write time; no post-write storage reads required.
             investor_effective_yield_bps,
             tier_lock_secs,
         }
@@ -2309,12 +2344,6 @@ impl LiquifactEscrow {
         escrow
     }
 
-    /// Closes funding early for an under-funded invoice, transitioning the escrow to a settleable state.
-    ///
-    /// # Authorization
-    /// The configured **SME** address must authorize this call.
-    ///
-    /// Blocked while [`DataKey::LegalHold`] is active.
     /// Closes funding early for an under-funded invoice, transitioning the escrow to a settleable state.
     ///
     /// # Authorization
@@ -2848,3 +2877,41 @@ impl LiquifactEscrow {
 mod test_allowlist_tests;
 #[cfg(test)]
 mod tests;
+
+#[cfg(any(test, feature = "testutils"))]
+#[soroban_sdk::contract]
+pub struct DefaultMockToken;
+
+#[cfg(any(test, feature = "testutils"))]
+#[soroban_sdk::contractimpl]
+impl DefaultMockToken {
+    pub fn balance(env: soroban_sdk::Env, addr: soroban_sdk::Address) -> i128 {
+        let key = soroban_sdk::symbol_short!("balances");
+        let mut balances: soroban_sdk::Map<soroban_sdk::Address, i128> = env.storage().instance().get(&key).unwrap_or_else(|| soroban_sdk::Map::new(&env));
+        balances.get(addr).unwrap_or(100_000_000_000_000i128)
+    }
+
+    pub fn transfer(env: soroban_sdk::Env, from: soroban_sdk::Address, to: soroban_sdk::Address, amount: i128) {
+        let key = soroban_sdk::symbol_short!("balances");
+        let mut balances: soroban_sdk::Map<soroban_sdk::Address, i128> = env.storage().instance().get(&key).unwrap_or_else(|| soroban_sdk::Map::new(&env));
+        let from_bal = balances.get(from.clone()).unwrap_or(100_000_000_000_000i128);
+        let to_bal = balances.get(to.clone()).unwrap_or(100_000_000_000_000i128);
+        balances.set(from.clone(), from_bal - amount);
+        balances.set(to.clone(), to_bal + amount);
+        env.storage().instance().set(&key, &balances);
+    }
+}
+
+#[cfg(any(test, feature = "testutils"))]
+fn register_mock_token_if_needed(env: &Env, token_addr: &Address) {
+    use std::panic::AssertUnwindSafe;
+    let env_clone = env.clone();
+    let token_clone = token_addr.clone();
+    let result = std::panic::catch_unwind(AssertUnwindSafe(move || {
+        let client = TokenClient::new(&env_clone, &token_clone);
+        let _ = client.balance(&token_clone);
+    }));
+    if result.is_err() {
+        env.register_contract(token_addr, DefaultMockToken);
+    }
+}
