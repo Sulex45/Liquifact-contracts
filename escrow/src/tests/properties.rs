@@ -1542,8 +1542,11 @@ fn fuzz_dust_sweep_liability_floor() {
         let n = 1 + rng.gen_usize(5);
         let investors: Vec<Address> = (0..n).map(|_| Address::generate(&env)).collect();
         let amounts: Vec<i128> = (0..n).map(|_| rng.gen_i128_inclusive(1, 100_000)).collect();
-        let pairs: Vec<(Address, i128)> = investors.iter().cloned().zip(amounts.iter().cloned()).collect();
-        let client = cancelled_escrow(&env, "FUZZDUST", &pairs);
+        let pairs: Vec<(Address, i128)> = investors
+            .iter()
+            .cloned()
+            .zip(amounts.iter().cloned())
+            .collect();        let client = cancelled_escrow(&env, "FUZZDUST", &pairs);
         let escrow = client.get_escrow();
         assert_eq!(escrow.status, 4);
         let funded = escrow.funded_amount;
