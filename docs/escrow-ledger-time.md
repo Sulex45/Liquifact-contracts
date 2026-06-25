@@ -211,7 +211,7 @@ Maturity can only be changed while the escrow is **Open** (status == 0):
 
 | Status | `update_maturity` result |
 |--------|--------------------------|
-| 0 — Open | ✅ Allowed |
+| 0 — Open | ✅ Allowed (if `new_maturity != old_maturity`, else panics: `MaturityUnchanged`) |
 | 1 — Funded | ❌ Panics: "Maturity can only be updated in Open state" |
 | 2 — Settled | ❌ Panics: "Maturity can only be updated in Open state" |
 | 3 — Withdrawn | ❌ Panics: "Maturity can only be updated in Open state" |

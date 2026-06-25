@@ -279,6 +279,8 @@ pub enum EscrowError {
     MaturityUpdateNotOpen = 79,
     /// [`LiquifactEscrow::propose_admin`] nominated the current admin address.
     NewAdminSameAsCurrent = 80,
+    /// [`LiquifactEscrow::update_maturity`] set maturity to the same value as current.
+    MaturityUnchanged = 81,
 
     /// [`LiquifactEscrow::migrate`] `from_version` does not match stored version.
     MigrationVersionMismatch = 90,
@@ -2201,11 +2203,7 @@ impl LiquifactEscrow {
         let n = entries.len();
 
         ensure(&env, n > 0, EscrowError::FundingBatchEmpty);
-        ensure(
-            &env,
-            n <= MAX_FUND_BATCH,
-            EscrowError::FundingBatchTooLarge,
-        );
+        ensure(&env, n <= MAX_FUND_BATCH, EscrowError::FundingBatchTooLarge);
 
         let mut escrow = Self::get_escrow(env.clone());
 
@@ -2751,6 +2749,12 @@ impl LiquifactEscrow {
         let mut escrow = Self::load_escrow_require_admin(&env);
 
         ensure(&env, escrow.status == 0, EscrowError::MaturityUpdateNotOpen);
+        /// Guard against no-op updates to prevent misleading events and wasted instance-storage writes.
+        ensure(
+            &env,
+            new_maturity != escrow.maturity,
+            EscrowError::MaturityUnchanged,
+        );
 
         let old_maturity = escrow.maturity;
         escrow.maturity = new_maturity;

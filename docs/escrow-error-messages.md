@@ -30,7 +30,7 @@ Codes are grouped by domain so SDKs can map coarse categories without parsing va
 | Dust sweep + SEP-41 safety | 30–42 | Terminal dust sweep and token transfer invariants | 30, 42 |
 | Attestation | 50–51 | Primary hash binding and append-only digest log | 50, 51 |
 | SME collateral | 60–62 | Off-chain collateral metadata record | 60, 62 |
-| Admin validation | 70–80 | Allowlist batch, funding target, investor cap, maturity, admin handover | 70, 80 |
+| Admin validation | 70–81 | Allowlist batch, funding target, investor cap, maturity, admin handover | 70, 81 |
 | Schema migration | 90–92 | `migrate` version checks | 90, 92 |
 | Funding | 100–111 | Investor deposits, batch funding, and contribution limits | 100, 111 |
 | Funding batch | 82–83 | [`fund_batch`] entry count bounds | 82, 83 |
@@ -93,6 +93,7 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 78 | `NewCapBelowCurrentFunderCount` | `lower_max_unique_investors` | `new_cap < unique funder count` | Cap cannot evict existing funders | typed |
 | 79 | `MaturityUpdateNotOpen` | `update_maturity` | escrow status `!= 0` | Only update maturity while open | typed |
 | 80 | `NewAdminSameAsCurrent` | `propose_admin` | proposed admin equals current admin | Nominate a different admin | typed |
+| 81 | `MaturityUnchanged` | `update_maturity` | `new_maturity == old_maturity` | Use a different maturity | typed |
 | 82 | `FundingBatchEmpty` | `fund_batch` | `entries.len() == 0` | Pass at least one `(investor, amount)` pair | typed |
 | 83 | `FundingBatchTooLarge` | `fund_batch` | `entries.len() > MAX_FUND_BATCH` | Split into smaller batches | typed |
 | 90 | `MigrationVersionMismatch` | `migrate` | stored version `!= from_version` | Pass matching `from_version` | typed |
@@ -182,6 +183,7 @@ See also [`docs/escrow-legal-hold.md`](escrow-legal-hold.md),
 | 78 | `new cap cannot be below current unique funder count` |
 | 79 | `Maturity can only be updated in Open state` |
 | 80 | `New admin must differ from current admin` |
+| 81 | `New maturity must differ from current maturity` |
 | 82 | `fund_batch entries vector must be non-empty` |
 | 83 | `fund_batch entries vector length exceeds MAX_FUND_BATCH` |
 | 90 | `from_version does not match stored version` |
@@ -236,7 +238,7 @@ Recommended SDK category mappings:
 | 30–42 | Dust sweep or token integration failure |
 | 50–51 | Attestation failure |
 | 60–62 | Collateral metadata failure |
-| 70–80, 82–83 | Administrative validation or batch-funding bounds failure |
+| 70–83 | Administrative validation or batch-funding bounds failure |
 | 90–92 | Migration failure |
 | 100–111 | Funding failure |
 | 163 | Admin handover not pending |
