@@ -379,7 +379,7 @@ pub enum EscrowError {
     /// Computing the legal-hold clear ready-at timestamp would overflow.
     LegalHoldClearDelayOverflow = 152,
     /// Funding deadline has passed, new deposits are rejected.
-    FundingDeadlinePassed = 153,
+    FundingDeadlinePassed = 165,
 
     /// A legal hold blocks rotating the beneficiary (SME) address.
     LegalHoldBlocksBeneficiaryRotation = 160,
@@ -726,6 +726,10 @@ pub struct EscrowSettled {
     pub maturity: u64,
     /// Ledger timestamp at which the settlement occurred.
     pub settled_at_ledger_timestamp: u64,
+    /// Realized settlement pool: `total_principal + floor(total_principal × yield_bps / 10_000)`.
+    /// Derived from [`FundingCloseSnapshot::total_principal`] and the base [`InvoiceEscrow::yield_bps`].
+    /// Zero when no [`FundingCloseSnapshot`] is present (legacy escrows without the snapshot key).
+    pub settle_pool: i128,
 }
 
 #[contractevent]
@@ -2653,6 +2657,25 @@ impl LiquifactEscrow {
 
         env.storage().instance().set(&DataKey::Escrow, &escrow);
 
+        // Compute the realized settle pool from the funding-close snapshot.
+        // Falls back to 0 for legacy escrows that pre-date the snapshot key.
+        let settle_pool: i128 = env
+            .storage()
+            .instance()
+            .get::<DataKey, FundingCloseSnapshot>(&DataKey::FundingCloseSnapshot)
+            .map(|snap| {
+                let coupon = snap
+                    .total_principal
+                    .checked_mul(escrow.yield_bps as i128)
+                    .unwrap_or_else(|| fail(&env, EscrowError::ComputePayoutArithmeticOverflow))
+                    .checked_div(10_000)
+                    .unwrap_or_else(|| fail(&env, EscrowError::ComputePayoutArithmeticOverflow));
+                snap.total_principal
+                    .checked_add(coupon)
+                    .unwrap_or_else(|| fail(&env, EscrowError::ComputePayoutArithmeticOverflow))
+            })
+            .unwrap_or(0);
+
         EscrowSettled {
             name: symbol_short!("escrow_sd"),
             invoice_id: escrow.invoice_id.clone(),
@@ -2660,6 +2683,7 @@ impl LiquifactEscrow {
             yield_bps: escrow.yield_bps,
             maturity: escrow.maturity,
             settled_at_ledger_timestamp: now,
+            settle_pool,
         }
         .publish(&env);
 
