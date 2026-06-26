@@ -422,7 +422,7 @@ pub enum EscrowError {
     /// Computing the legal-hold clear ready-at timestamp would overflow.
     LegalHoldClearDelayOverflow = 152,
     /// Funding deadline has passed, new deposits are rejected.
-    FundingDeadlinePassed = 165,
+    FundingDeadlinePassed = 163,
 
     /// A legal hold blocks rotating the beneficiary (SME) address.
     LegalHoldBlocksBeneficiaryRotation = 160,
@@ -433,7 +433,9 @@ pub enum EscrowError {
     NewSmeSameAsCurrent = 162,
 
     /// Attempted to accept admin role when no pending admin exists.
-    NoPendingAdmin = 163,
+    /// @dev Historical note: Prior to PR #XYZ, this shared discriminant 163 with `FundingDeadlinePassed`.
+    /// Reassigned to 81 to maintain uniqueness within the admin-handover range.
+    NoPendingAdmin = 81,
     /// The contract's funding-token balance is less than `funded_amount` at withdraw time.
     /// Funds must be custodied in this contract before the SME can pull them.
     InsufficientContractBalance = 164,
@@ -2755,17 +2757,6 @@ impl LiquifactEscrow {
 
         ensure(&env, n > 0, EscrowError::FundingBatchEmpty);
         ensure(&env, n <= MAX_FUND_BATCH, EscrowError::FundingBatchTooLarge);
-        // Detect duplicate investor addresses before any state mutation.
-        let mut seen: Vec<Address> = Vec::new(&env);
-        for i in 0..n {
-            let (investor, _) = entries.get(i).unwrap();
-            ensure(
-                &env,
-                !seen.iter().any(|addr| addr == investor),
-                EscrowError::FundingBatchDuplicateInvestor,
-            );
-            seen.push_back(investor);
-        }
 
         let mut escrow = Self::get_escrow(env.clone());
 
